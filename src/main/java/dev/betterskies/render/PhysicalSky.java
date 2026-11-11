@@ -196,6 +196,16 @@ public final class PhysicalSky {
     }
 
     public static int color(double[] view, double[] sun, Params p) {
+        if (view[1] < 0.012) {
+            // below the horizon: distant land fades out of the horizon haze, like in real life
+            double el = Math.toDegrees(Math.asin(Math.max(-1, view[1])));
+            double[] flat = SkyMath.norm(new double[]{view[0], 0, view[2]});
+            double c = Math.cos(Math.toRadians(0.7)), sn = Math.sin(Math.toRadians(0.7));
+            int horizon = toRgb(radiance(new double[]{flat[0] * c, sn, flat[2] * c}, sun, p), p, sun[1]);
+            double light = 0.25 + 0.6 * Colors.luminance(horizon);
+            int ground = Colors.scale(p.ground, light);
+            return Colors.mixOklab(horizon, ground, SkyMath.smooth(-0.7, 16, -el));
+        }
         return toRgb(radiance(view, sun, p), p, sun[1]);
     }
 

@@ -22,8 +22,16 @@ public final class Async<K, V> {
     private boolean fresh;
     private String error;
 
+    private final java.util.concurrent.Executor executor;
+
     public Async(String what) {
+        this(what, BetterSkies.WORKER);
+    }
+
+    /** Uses its own executor (e.g. a dedicated thread so quick jobs never wait behind slow ones). */
+    public Async(String what, java.util.concurrent.Executor executor) {
         this.what = what;
+        this.executor = executor;
     }
 
     /** Requests the value for key; returns whatever is ready (maybe for an older key, maybe null). */
@@ -92,6 +100,6 @@ public final class Async<K, V> {
         runningKey = wantedKey;
         wantedJob = null;
         wantedKey = null;
-        running = CompletableFuture.supplyAsync(job, BetterSkies.WORKER);
+        running = CompletableFuture.supplyAsync(job, executor);
     }
 }

@@ -20,7 +20,13 @@ final class AtmosphereLayer {
     private record Baked(int w, int h, int[] argb, double[] sun) {
     }
 
-    private static final Async<Key, Baked> job = new Async<>("Atmosphere");
+    private static final Async<Key, Baked> job = new Async<>("Atmosphere",
+            java.util.concurrent.Executors.newSingleThreadExecutor(r -> {
+                Thread t = new Thread(r, "BetterSkies atmosphere");
+                t.setDaemon(true);
+                t.setPriority(Thread.NORM_PRIORITY - 1);
+                return t;
+            }));
     private static Gpu.Tex tex;
     private static Baked shown;
 
@@ -65,7 +71,12 @@ final class AtmosphereLayer {
             }
             shown = baked;
         }
-        if (tex == null) {
+        if (tex == null || shown == null) {
+            return 0;
+        }
+        // after a time jump the old sky would be wrong: show the gradient until the new one is ready
+        double drift = Math.toDegrees(Math.acos(Math.max(-1, Math.min(1, SkyMath.dot(shown.sun(), s.sun)))));
+        if (drift > 3) {
             return 0;
         }
         Gpu.draw(sphere, camera, new Vector4f(1, 1, 1, (float) w), tex.view(), Gpu.sampler(true));
