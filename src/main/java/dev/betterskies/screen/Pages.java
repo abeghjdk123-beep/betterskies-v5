@@ -664,9 +664,9 @@ final class Pages {
             s.controls.button(ui, "st:folder", "Open BetterSkies folder", x + 8, top, bw, 16, Controls.Style.NORMAL,
                     "config/betterskies: studio.json, saved skies, images and automatic backups", () -> s.openFolder(BetterSkies.store().root()));
             s.controls.button(ui, "st:reset", "Reset the whole sky…", x + 12 + bw, top, bw, 16, Controls.Style.DANGER,
-                    "Every sky setting back to the BetterSkies default (you can undo)", () -> s.confirm("Reset everything?",
-                            "All sky settings return to the BetterSkies default. Saved skies and Studio preferences are kept.", "Reset",
-                            () -> s.loadSky(new Profile())));
+                    "Turn every effect off and start from a plain sky (you can undo)", () -> s.confirm("Reset to a blank sky?",
+                            "Every effect is turned off and the sky goes back to plain colors. Saved skies and Studio preferences are kept.", "Reset",
+                            () -> s.loadSky(BuiltinSkies.blank())));
             return top + 20;
         });
         return card("studio:about", "About", x, y, w, top -> {

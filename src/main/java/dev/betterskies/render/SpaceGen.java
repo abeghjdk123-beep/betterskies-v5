@@ -149,7 +149,8 @@ public final class SpaceGen {
             double pxPerRad = w / SkyMath.TAU;
             int count = (int) (Math.pow(in.density, 1.4) * 9000 * (w >= 2048 ? 1.4 : 1.0)) + 60;
             int extraBand = in.milky ? (int) (count * 0.8 * in.mwBright) : 0;
-            int brightCap = in.twinkle > 0 ? (int) (40 + 260 * in.density) : 0;
+            // these stars are drawn as separate sprites so they can twinkle
+            int brightCap = in.twinkle > 0 ? (int) (250 + 1100 * in.density) : 0;
             long seed = in.seed * 31L;
             int made = 0;
             for (int i = 0; made < count + extraBand && i < (count + extraBand) * 6; i++) {
@@ -167,8 +168,8 @@ public final class SpaceGen {
                 int col = starColor(in, SkyMath.hash(seed + 2, i));
                 double sizePx = (0.55 + 1.1 * Math.pow(mag, 4)) * in.size * (w / 2048.0);
                 lum *= in.brightness;
-                if (!bandStar && brightCap > 0 && mag > 0.93 && bright.size() < brightCap) {
-                    bright.add(new Star(d, (float) (sizePx / pxPerRad * 2.6), col, (float) Math.min(1.6, lum),
+                if (!bandStar && brightCap > 0 && mag > 0.8 && bright.size() < brightCap) {
+                    bright.add(new Star(d, (float) (Math.max(sizePx, 0.9 * in.size) / pxPerRad * 2.6), col, (float) Math.min(1.6, lum),
                             (float) (SkyMath.hash(seed + 3, i) * SkyMath.TAU)));
                     continue;
                 }

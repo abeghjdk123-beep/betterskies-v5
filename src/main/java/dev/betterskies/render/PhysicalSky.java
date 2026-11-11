@@ -196,28 +196,54 @@ public final class PhysicalSky {
     }
 
     public static int color(double[] view, double[] sun, Params p) {
-        if (view[1] < 0.012) {
-            // below the horizon: distant land fades out of the horizon haze, like in real life
+        if (view[1] < 0.007) {
             double el = Math.toDegrees(Math.asin(Math.max(-1, view[1])));
             double[] flat = SkyMath.norm(new double[]{view[0], 0, view[2]});
-            double c = Math.cos(Math.toRadians(0.7)), sn = Math.sin(Math.toRadians(0.7));
-            int horizon = toRgb(radiance(new double[]{flat[0] * c, sn, flat[2] * c}, sun, p), p, sun[1]);
-            double light = 0.25 + 0.6 * Colors.luminance(horizon);
-            int ground = Colors.scale(p.ground, light);
-            return Colors.mixOklab(horizon, ground, SkyMath.smooth(-0.7, 16, -el));
+            return below(horizonColor(flat, sun, p), el, p);
         }
         return toRgb(radiance(view, sun, p), p, sun[1]);
     }
 
-    /** Equirectangular sky (u = azimuth from north, v = 0 at zenith), opaque ARGB. */
+    private static int horizonColor(double[] flat, double[] sun, Params p) {
+        double c = Math.cos(Math.toRadians(0.4)), sn = Math.sin(Math.toRadians(0.4));
+        return toRgb(radiance(new double[]{flat[0] * c, sn, flat[2] * c}, sun, p), p, sun[1]);
+    }
+
+    /**
+     * Below the horizon: the horizon glow carries on and softens into hazy, darker
+     * land over a few tens of degrees, instead of stopping in a hard line.
+     */
+    private static int below(int horizon, double el, Params p) {
+        double depth = 0.4 - el;
+        double lum = Colors.luminance(horizon);
+        int haze = Colors.mixOklab(horizon, Colors.scale(Colors.mix(horizon, 0x8A8F99, 0.25), 0.7), SkyMath.smooth(0, 10, depth));
+        int ground = Colors.scale(Colors.mix(p.ground, horizon, 0.35), 0.2 + 0.55 * lum);
+        return Colors.mixOklab(haze, ground, SkyMath.smooth(4, 40, depth));
+    }
+
+    /**
+     * Equirectangular sky (u = azimuth from north, v = 0 at zenith), opaque ARGB.
+     * Use a tall texture (h around 4 x w): colors change fastest with height,
+     * especially right at the horizon.
+     */
     public static int[] texture(int w, int h, double[] sun, Params p) {
         int[] out = new int[w * h];
+        int[] horizon = new int[w];
+        for (int x = 0; x < w; x++) {
+            double[] d = SkyMath.dirFromUv((x + 0.5) / w, 0.5);
+            horizon[x] = horizonColor(SkyMath.norm(new double[]{d[0], 0, d[2]}), sun, p);
+        }
         Parallel.rows(h, y -> {
             double v = (y + 0.5) / h;
-            // squeeze more rows toward the horizon where the colors change fastest
+            double el = (0.5 - v) * 180;
             for (int x = 0; x < w; x++) {
-                double[] d = SkyMath.dirFromUv((x + 0.5) / w, v);
-                out[y * w + x] = 0xFF000000 | color(d, sun, p);
+                int c;
+                if (el < 0.4) {
+                    c = below(horizon[x], el, p);
+                } else {
+                    c = toRgb(radiance(SkyMath.dirFromUv((x + 0.5) / w, v), sun, p), p, sun[1]);
+                }
+                out[y * w + x] = 0xFF000000 | c;
             }
         });
         return out;

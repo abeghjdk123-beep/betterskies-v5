@@ -873,6 +873,7 @@ public final class StudioScreen extends Screen {
         Settings.NEB_COLOR.set(sky, Colors.hsv(h2 + 0.1, 0.6, 1));
         Settings.NEB_COLOR2.set(sky, Colors.hsv(h2 - 0.15, 0.5, 1));
         Settings.AURORA.set(sky, r.nextDouble() < 0.4);
+        Settings.AURORA_AUTO.set(sky, r.nextDouble() < 0.6);
         Settings.AURORA_COLOR.set(sky, Colors.hsv(h + 0.35, 0.7, 1));
         Settings.AURORA_COLOR2.set(sky, Colors.hsv(h + 0.6, 0.6, 1));
         Settings.COMETS.set(sky, r.nextDouble() < 0.3);

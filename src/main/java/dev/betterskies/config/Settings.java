@@ -216,9 +216,9 @@ public final class Settings {
             p -> STARS.on(p) && !STAR_COLORS.is(p, "REALISTIC"));
     public static final Color STAR_COLOR2 = when(color("star_color2", "Second star color", 0xB9A4FF, "Second star color for Two-tone."),
             p -> STARS.on(p) && STAR_COLORS.is(p, "TINTED"));
-    public static final Slider TWINKLE = when(slider("twinkle", "Twinkle", 0.4, 0, 1, 0.01, Unit.PERCENT,
-            "How much bright stars shimmer."), STARS_ON);
-    public static final Slider TWINKLE_SPEED = adv(when(slider("twinkle_speed", "Twinkle speed", 0.4, 0, 1, 0.01, Unit.PERCENT,
+    public static final Slider TWINKLE = when(slider("twinkle", "Twinkle", 0.6, 0, 1, 0.01, Unit.PERCENT,
+            "How much stars flicker (strongest near the horizon, like real starlight through the air)."), STARS_ON);
+    public static final Slider TWINKLE_SPEED = adv(when(slider("twinkle_speed", "Twinkle speed", 0.45, 0, 1, 0.01, Unit.PERCENT,
             "How fast stars shimmer."), STARS_ON));
     public static final Slider DAY_STARS = when(slider("day_stars", "Daytime stars", 0, 0, 1, 0.01, Unit.PERCENT,
             "Keep stars visible during the day (great for alien or fantasy skies)."), STARS_ON);
@@ -275,19 +275,28 @@ public final class Settings {
     public static final Toggle AURORA = toggle("aurora", "Northern lights", false, "Glowing aurora curtains in the night sky.");
     private static final Predicate<Profile> AU_ON = p -> AURORA.on(p);
     public static final Choice AURORA_STYLE = when(choice("aurora_style", "Style", "CURTAINS", "Shape of the aurora.",
-            opt("CURTAINS", "Curtains", "Tall folded curtains with fine vertical rays (realistic)."),
-            opt("RIBBONS", "Ribbons", "Smooth flowing ribbons of light."),
-            opt("DIFFUSE", "Diffuse glow", "A broad soft glow low in the sky.")), AU_ON);
-    public static final Color AURORA_COLOR = when(color("aurora_color", "Lower color", 0x52FFB3, "Color at the bottom edge (brightest part)."), AU_ON);
-    public static final Color AURORA_COLOR2 = when(color("aurora_color2", "Upper color", 0x9C58FF, "Color the curtains fade into at the top."), AU_ON);
-    public static final Slider AURORA_INTENSITY = when(slider("aurora_intensity", "Intensity", 0.6, 0, 1, 0.01, Unit.PERCENT, "Brightness of the aurora."), AU_ON);
-    public static final Slider AURORA_BANDS = when(slider("aurora_bands", "Bands", 3, 1, 6, 1, Unit.INTEGER, "Number of overlapping curtains."), AU_ON);
-    public static final Slider AURORA_HEIGHT = when(slider("aurora_height", "Height in sky", 0.4, 0, 1, 0.01, Unit.PERCENT, "How high above the horizon it starts."), AU_ON);
-    public static final Slider AURORA_THICKNESS = when(slider("aurora_thickness", "Curtain height", 0.45, 0, 1, 0.01, Unit.PERCENT, "How tall the curtains are."), AU_ON);
-    public static final Slider AURORA_SPREAD = when(slider("aurora_spread", "Spread", 150, 30, 360, 5, Unit.DEGREES, "How much of the sky the aurora spans."), AU_ON);
-    public static final Slider AURORA_SPEED = when(slider("aurora_speed", "Motion speed", 0.3, 0, 1, 0.01, Unit.PERCENT, "How fast it ripples."), AU_ON);
+            opt("CURTAINS", "Curtains", "Tall folded curtains of light with fine vertical rays (most realistic)."),
+            opt("RIBBONS", "Ribbons", "Smooth, flowing bands of light with soft rays."),
+            opt("STORM", "Aurora storm", "A bright, very active display: many tall curtains, vivid pink and purple."),
+            opt("DIFFUSE", "Diffuse glow", "A broad, soft glow low in the sky.")), AU_ON);
+    public static final Toggle AURORA_AUTO = when(toggle("aurora_auto", "Natural colors", true,
+            "Real aurora colors (green with pink and red tops) that adapt to your sky's colors, nebulae and moonlight."), AU_ON);
+    private static final Predicate<Profile> AU_MANUAL = p -> AURORA.on(p) && !AURORA_AUTO.on(p);
+    public static final Color AURORA_COLOR = when(color("aurora_color", "Lower color", 0x52FFB3, "Color of the bright lower part (used when Natural colors is off)."), AU_MANUAL);
+    public static final Color AURORA_COLOR2 = when(color("aurora_color2", "Upper color", 0xC45CFF, "Color the curtains fade into at the top (used when Natural colors is off)."), AU_MANUAL);
+    public static final Slider AURORA_PINK = when(slider("aurora_pink", "Pink & red tops", 0.55, 0, 1, 0.01, Unit.PERCENT,
+            "How much of each curtain glows in the upper color: subtle green (low) to vivid pink and red tops (high)."), AU_ON);
+    public static final Slider AURORA_INTENSITY = when(slider("aurora_intensity", "Intensity", 0.7, 0, 1, 0.01, Unit.PERCENT, "Brightness of the aurora."), AU_ON);
+    public static final Slider AURORA_BANDS = when(slider("aurora_bands", "Curtains", 3, 1, 6, 1, Unit.INTEGER, "Number of curtains."), AU_ON);
+    public static final Slider AURORA_HEIGHT = when(slider("aurora_height", "Reach overhead", 0.45, 0, 1, 0.01, Unit.PERCENT,
+            "Low on the horizon (low) to passing right overhead, rays converging at the top of the sky (high)."), AU_ON);
+    public static final Slider AURORA_THICKNESS = when(slider("aurora_thickness", "Curtain height", 0.6, 0, 1, 0.01, Unit.PERCENT, "How tall the curtains are."), AU_ON);
+    public static final Slider AURORA_SPREAD = when(slider("aurora_spread", "Spread", 220, 30, 360, 5, Unit.DEGREES, "How much of the sky the aurora spans."), AU_ON);
+    public static final Slider AURORA_SPEED = when(slider("aurora_speed", "Motion speed", 0.3, 0, 1, 0.01, Unit.PERCENT, "How fast it ripples and dances."), AU_ON);
     public static final Slider AURORA_WAVE = adv(when(slider("aurora_wave", "Folds", 0.6, 0, 1, 0.01, Unit.PERCENT, "How strongly the curtains fold and wave."), AU_ON));
-    public static final Slider AURORA_RAYS = adv(when(slider("aurora_rays", "Ray detail", 0.6, 0, 1, 0.01, Unit.PERCENT, "Fine vertical rays inside the curtains."), AU_ON));
+    public static final Slider AURORA_RAYS = when(slider("aurora_rays", "Rays", 0.75, 0, 1, 0.01, Unit.PERCENT, "Strength of the fine vertical rays."), AU_ON);
+    public static final Slider AURORA_GLOW = when(slider("aurora_glow", "Sky glow", 0.5, 0, 1, 0.01, Unit.PERCENT,
+            "Soft colored light the aurora casts into the surrounding sky."), AU_ON);
     public static final Slider AURORA_DIRECTION = adv(when(slider("aurora_direction", "Direction", 0, 0, 359, 1, Unit.DEGREES, "Compass direction it sits in (0° = north)."), AU_ON));
     public static final Toggle AURORA_NIGHT_ONLY = when(toggle("aurora_night_only", "Night only", true, "Fade the aurora out during the day."), AU_ON);
 

@@ -69,7 +69,7 @@ final class Previews {
             }
         }
         if (Settings.AURORA.on(p)) {
-            int ac = Settings.AURORA_COLOR.rgb(p);
+            int ac = dev.betterskies.render.AuroraColors.palette(p, new SkyState(p, 18000, 0, 0), dev.betterskies.config.Grade.NONE)[0];
             for (int i = 0; i < nw; i++) {
                 int ay = horizonY - 8 - (int) (Math.sin(i * 0.35) * 2) - (int) (Settings.AURORA_HEIGHT.v(p) * 6);
                 ui.gradientV(nx + i, ay - 6, 1, 6, Colors.argbf(0, ac), Colors.argbf(0.7, ac));

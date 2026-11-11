@@ -114,6 +114,7 @@ public final class Migration {
         Settings.SUN_SIZE.set(p, parseDouble(props.getProperty(pre + "sunSize"), 1));
         Settings.MOON_SIZE.set(p, parseDouble(props.getProperty(pre + "moonSize"), 1));
         Settings.AURORA.set(p, bool(props, pre + "aurora", false));
+        Settings.AURORA_AUTO.set(p, false);
         Settings.AURORA_COLOR.set(p, color(props, pre + "auroraColor", 0x52FFB3));
         Settings.AURORA_COLOR2.set(p, color(props, pre + "auroraSecondaryColor", 0x9C58FF));
         Settings.METEORS.set(p, bool(props, pre + "shootingStars", false));

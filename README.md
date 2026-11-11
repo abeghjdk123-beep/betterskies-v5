@@ -35,7 +35,10 @@ Press **F12** in game (rebindable under Controls → BetterSkies), or use Mod Me
 - **Day cycle with full gradients**: separate multi-color gradients for day, sunset, night (and optionally sunrise), blended smoothly as the sun moves. 3.x only had four single colors.
 - Perceptual (OKLab) color blending, so sunsets never go muddy grey between colors; plus Smooth, Linear and toon-style Bands modes.
 - New procedural **sun** (soft disc, glowing orb, pixel) and **moon** (realistic craters and true phase shading, soft, pixel), moon glow, icy moon halo, earthshine, and an **orbit tilt** so the sun arcs across the sky.
-- **Northern lights** rebuilt: folded curtains with fine vertical rays, smooth ribbons, or a diffuse glow; choose bands, height, spread, direction and speed.
+- **Northern lights** rebuilt as real 3D curtains hanging in the sky: bright green bases with a sharp lower edge, pink and red tops, fine vertical rays, folds that ripple, and a soft glow on the sky behind. They converge overhead when they reach high ("Reach overhead"), and a Storm style gives an intense pink-and-green outburst. **Natural colors** adapt the aurora to your night-sky colors, nebulae and moonlight, or pick your own colors.
+- **Star twinkle** you can actually see: stars scintillate in brightness, size and color, more strongly near the horizon where the air is thicker.
+- **Real atmosphere horizon** fades smoothly below the horizon into haze and ground color instead of stopping in a hard band.
+- **Reset the whole sky** (Studio page) and the **Blank sky** entry in the library give you a plain sky with every effect turned off, a clean canvas to build your own.
 - **Meteor showers**: some nights bring showers with meteors radiating from one point. **Comets** with tails that point away from the sun.
 - **Sunset glow** that wraps around the horizon toward the sun, replacing the vanilla fan (or keep vanilla's).
 - Horizon haze, a configurable horizon line, and what to show below the horizon (fade to ground, extend, mirror).

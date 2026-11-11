@@ -68,87 +68,165 @@ public final class Effects {
 
     // ================================================================== aurora
 
+    /**
+     * Northern lights as real vertical curtains in 3D: sheets of light standing on
+     * a layer above you, folding and drifting. Seen from below, near curtains rise
+     * high and their rays converge toward the zenith; far ones sit low on the
+     * horizon. Each curtain has a sharp bright lower edge with a purple-pink fringe,
+     * a green body, pink-red tops and fine vertical rays, plus a soft glow it
+     * casts into the sky. Every point is projected onto the sky sphere.
+     */
     public static void aurora(Geometry g, Profile p, SkyState s, Grade grade, double time, double vis, double r, boolean low) {
         String style = Settings.AURORA_STYLE.get(p);
-        boolean diffuse = "DIFFUSE".equals(style), ribbons = "RIBBONS".equals(style);
-        int bands = diffuse ? 1 : (int) Settings.AURORA_BANDS.v(p);
-        double spread = Settings.AURORA_SPREAD.v(p);
-        double dir = Settings.AURORA_DIRECTION.v(p);
-        double height = Settings.AURORA_HEIGHT.v(p);
+        boolean diffuse = "DIFFUSE".equals(style), ribbons = "RIBBONS".equals(style), storm = "STORM".equals(style);
+        int[] pal = AuroraColors.palette(p, s, grade);
+        vis *= AuroraColors.visibility(p, s);
+        int bands = diffuse ? 1 : (int) Settings.AURORA_BANDS.v(p) + (storm ? 2 : 0);
+        double reach = Settings.AURORA_HEIGHT.v(p);
         double thick = Settings.AURORA_THICKNESS.v(p);
-        double wave = Settings.AURORA_WAVE.v(p) * (ribbons ? 1.5 : 1);
-        double rays = ribbons || diffuse ? 0 : Settings.AURORA_RAYS.v(p);
-        double speed = Settings.EFFECTS.on(p) ? 0.15 + Settings.AURORA_SPEED.v(p) * 1.2 : 0;
-        double alpha = Settings.AURORA_INTENSITY.v(p) * vis * (diffuse ? 0.55 : 0.85);
-        int ca = grade.apply(Settings.AURORA_COLOR.rgb(p));
-        int cb = grade.apply(Settings.AURORA_COLOR2.rgb(p));
-        int cols = low ? 64 : 140;
-        boolean full = spread >= 359;
+        double wave = Settings.AURORA_WAVE.v(p) * (ribbons ? 1.4 : 1) * (storm ? 1.3 : 1);
+        double rays = diffuse ? 0 : ribbons ? Settings.AURORA_RAYS.v(p) * 0.35 : Settings.AURORA_RAYS.v(p);
+        double speed = Settings.EFFECTS.on(p) ? (0.1 + Settings.AURORA_SPEED.v(p)) * (storm ? 1.6 : 1) : 0;
         double t = time * speed;
-        for (int b = 0; b < bands; b++) {
-            double bandSeed = b * 17.31;
-            double centre = dir + (bands == 1 ? 0 : (b - (bands - 1) / 2.0) * spread * 0.18) + Math.sin(t * 0.05 + b) * 6;
-            double bandSpread = spread * (bands == 1 ? 1 : 0.7 + 0.3 * SkyMath.hash(b, 9));
-            double base = 6 + height * 38 + b * (diffuse ? 0 : 3.5);
-            double hgt = (diffuse ? 22 : ribbons ? 7 : 12) + thick * (diffuse ? 30 : 34);
-            double bandAlpha = alpha * (bands == 1 ? 1 : 0.65 + 0.35 * SkyMath.hash(b, 3));
-            double[] prevBottom = null, prevMid = null, prevTop = null;
-            int pcb = 0, pcm = 0, pct = 0;
-            for (int i = 0; i <= cols; i++) {
-                double x = (double) i / cols;
-                double az = centre + (x - 0.5) * bandSpread;
-                double fold = wave * (Math.sin(x * 9.0 + t * 0.6 + bandSeed) * 0.55
-                        + NOISE.noise(x * 4.0 + bandSeed, t * 0.15, b * 3.7) * 0.9);
-                double el0 = base + fold * 9;
-                double h = hgt * (0.75 + 0.35 * NOISE.fbm(x * 3 + bandSeed, t * 0.1, 5, 2, 0.5));
-                double env = full ? 1 : Math.pow(Math.sin(Math.PI * x), 0.7);
-                double ray = 1;
-                if (rays > 0) {
-                    double rr = NOISE.noise(x * 70 + bandSeed, t * 0.9, b) * 0.5 + 0.5;
-                    double rr2 = NOISE.noise(x * 23 + bandSeed * 2, t * 0.4, b + 5) * 0.5 + 0.5;
-                    ray = 1 - rays * 0.85 * (1 - Math.pow(rr * 0.6 + rr2 * 0.4, 1.6));
+        double intensity = 1.7 * Settings.AURORA_INTENSITY.v(p) * vis * (storm ? 1.25 : 1) * (diffuse ? 0.6 : 1);
+        double pink = Math.min(1, Settings.AURORA_PINK.v(p) + (storm ? 0.25 : 0));
+        double glowAmt = Settings.AURORA_GLOW.v(p);
+        double spread = Settings.AURORA_SPREAD.v(p);
+        double az = Math.toRadians(Settings.AURORA_DIRECTION.v(p));
+        double[] fwd = {Math.sin(az), 0, -Math.cos(az)};
+        double[] side = {Math.cos(az), 0, Math.sin(az)};
+        double hb = 7;
+        double H = (diffuse ? 12 : 10) + thick * (diffuse ? 18 : 46) + (storm ? 10 : 0);
+        double L = 40 + spread / 360 * 300;
+        int cols = low ? 80 : 170;
+        double activity = 0.82 + 0.18 * NOISE.noise(t * 0.08, 3.3, 1.1) + (storm ? 0.2 * Math.max(0, NOISE.noise(t * 0.3, 5, 2)) : 0);
+
+        // rows up the curtain: height fraction, opacity, color
+        int lower = pal[0], upper = pal[1], fringe = pal[2];
+        double[] rf = diffuse ? new double[]{-0.15, 0.05, 0.3, 0.6, 1.0} : new double[]{-0.05, 0.0, 0.07, 0.28, 0.55, 0.8, 1.0};
+        double[] ra = diffuse ? new double[]{0, 0.6, 0.55, 0.25, 0} : new double[]{0, 0.9, 1.0, 0.85, 0.6, 0.32, 0};
+        int[] rc = diffuse
+                ? new int[]{lower, lower, Colors.mixOklab(lower, upper, 0.3 * pink), Colors.mixOklab(lower, upper, 0.7 * pink), upper}
+                : new int[]{fringe, Colors.mixOklab(fringe, lower, 0.5), lower, Colors.mixOklab(lower, upper, 0.15 + 0.35 * pink),
+                Colors.mixOklab(lower, upper, 0.35 + 0.65 * pink), Colors.mixOklab(lower, upper, 0.55 + 0.45 * pink), upper};
+
+        for (int pass = 0; pass < 2; pass++) {
+            boolean glowPass = pass == 0;
+            if (glowPass && glowAmt <= 0) {
+                continue;
+            }
+            int c = glowPass ? Math.max(24, cols / 4) : cols;
+            for (int b = 0; b < bands; b++) {
+                double seed = b * 13.7;
+                double dist = SkyMath.lerp(110, -10, reach) + (b - (bands - 1) / 2.0) * SkyMath.lerp(22, 14, reach)
+                        + 6 * NOISE.noise(b * 2.1, t * 0.03, 0.5);
+                double len = L * (bands == 1 ? 1 : 0.75 + 0.25 * SkyMath.hash(b, 2));
+                double offSide = (SkyMath.hash(b, 4) - 0.5) * L * 0.25;
+                double bandI = intensity * (bands == 1 ? 1 : 0.6 + 0.4 * SkyMath.hash(b, 3)) * activity;
+                double[][] prev = null;
+                int[] prevC = null;
+                int rows = glowPass ? 4 : rf.length;
+                for (int i = 0; i <= c; i++) {
+                    double x = (double) i / c;
+                    double sx = (x - 0.5) * len + offSide;
+                    double fold = wave * (5 * Math.sin(sx * 0.045 + t * 0.7 + seed) + 7 * NOISE.noise(sx * 0.02 + seed, t * 0.12, b * 1.3));
+                    double dd = dist + fold + sx * sx * 0.0015;
+                    double bx = fwd[0] * dd + side[0] * sx, bz = fwd[2] * dd + side[2] * sx;
+                    double env = spread >= 355 ? 1 : Math.pow(Math.max(0, Math.sin(Math.PI * x)), 0.6);
+                    double ray = 1, topVar = 1;
+                    if (rays > 0 && !glowPass) {
+                        double n1 = 0.5 + 0.5 * NOISE.noise(sx * 0.55 + t * 0.9, b * 3.1, seed);
+                        double n2 = 0.5 + 0.5 * NOISE.noise(sx * 1.7 - t * 1.3, b * 5.3, seed + 2);
+                        ray = SkyMath.lerp(1, Math.pow(n1 * 0.6 + n2 * 0.4, 2.2) * 1.9, rays);
+                        topVar = 0.65 + 0.55 * n1 * rays + (1 - rays) * 0.35;
+                    }
+                    double colH = H * topVar * (0.85 + 0.3 * NOISE.noise(sx * 0.08 + seed, t * 0.2, 7));
+                    double flick = glowPass ? 1 : 0.85 + 0.15 * NOISE.noise(sx * 0.3, t * 2.0, b + 9);
+                    double far = Math.sqrt(dd * dd + sx * sx);
+                    double a = bandI * env * ray * flick * SkyMath.smooth(175, 90, far);
+                    double[][] pts = new double[rows][];
+                    int[] cs = new int[rows];
+                    for (int k = 0; k < rows; k++) {
+                        double f, alpha;
+                        int col;
+                        if (glowPass) {
+                            double[] gf = {-0.35, 0.1, 0.5, 1.25};
+                            double[] ga = {0, 1, 0.55, 0};
+                            f = gf[k];
+                            alpha = ga[k] * 0.3 * glowAmt;
+                            col = k < 2 ? pal[3] : Colors.mixOklab(pal[3], upper, 0.5 * pink);
+                        } else {
+                            f = rf[k];
+                            alpha = ra[k];
+                            col = rc[k];
+                        }
+                        double y = hb + f * colH;
+                        double len3 = Math.sqrt(bx * bx + y * y + bz * bz);
+                        double[] dir = {bx / len3, y / len3, bz / len3};
+                        double el = Math.toDegrees(Math.asin(dir[1]));
+                        double fade = SkyMath.smooth(-0.5, 2.5, el);
+                        pts[k] = SkyMath.scale(dir, r);
+                        cs[k] = Colors.argbf(Math.min(1, alpha * a * fade), col);
+                    }
+                    if (prev != null) {
+                        for (int k = 0; k < rows - 1; k++) {
+                            if (((prevC[k] | prevC[k + 1] | cs[k] | cs[k + 1]) >>> 24) == 0) {
+                                continue;
+                            }
+                            g.quad(prev[k], 0.5, 0.5, prevC[k], pts[k], 0.5, 0.5, cs[k],
+                                    pts[k + 1], 0.5, 0.5, cs[k + 1], prev[k + 1], 0.5, 0.5, prevC[k + 1]);
+                        }
+                    }
+                    prev = pts;
+                    prevC = cs;
                 }
-                double flicker = 0.85 + 0.15 * NOISE.noise(x * 2 + bandSeed, t * 0.5, 9);
-                double a = bandAlpha * env * ray * flicker;
-                double[] bottom = SkyMath.scale(SkyMath.dirFromAngles(az, el0), r);
-                double[] mid = SkyMath.scale(SkyMath.dirFromAngles(az, el0 + h * (diffuse ? 0.35 : 0.14)), r);
-                double[] top = SkyMath.scale(SkyMath.dirFromAngles(az + fold * 2, el0 + h), r);
-                int colBottom = Colors.argbf(0, ca);
-                int colMid = Colors.argbf(Math.min(1, a), Colors.mixOklab(ca, 0xFFFFFF, rays * 0.12 * ray));
-                int colTop = Colors.argbf(0, cb);
-                if (prevBottom != null) {
-                    g.quad(prevBottom, 0.5, 0.5, pcb, bottom, 0.5, 0.5, colBottom, mid, 0.5, 0.5, colMid, prevMid, 0.5, 0.5, pcm);
-                    // upper part fades through the upper color
-                    int pUpper = Colors.argbf(Colors.a(pcm) / 255.0 * 0.55, Colors.mixOklab(ca, cb, 0.6));
-                    int upper = Colors.argbf(Colors.a(colMid) / 255.0 * 0.55, Colors.mixOklab(ca, cb, 0.6));
-                    double[] pUp = SkyMath.add(SkyMath.scale(prevMid, 0.45), SkyMath.scale(prevTop, 0.55));
-                    double[] up = SkyMath.add(SkyMath.scale(mid, 0.45), SkyMath.scale(top, 0.55));
-                    g.quad(prevMid, 0.5, 0.5, pcm, mid, 0.5, 0.5, colMid, up, 0.5, 0.5, upper, pUp, 0.5, 0.5, pUpper);
-                    g.quad(pUp, 0.5, 0.5, pUpper, up, 0.5, 0.5, upper, top, 0.5, 0.5, colTop, prevTop, 0.5, 0.5, pct);
-                }
-                prevBottom = bottom;
-                prevMid = mid;
-                prevTop = top;
-                pcb = colBottom;
-                pcm = colMid;
-                pct = colTop;
             }
         }
     }
 
     // ================================================================== twinkling stars
 
-    public static void twinkle(Geometry g, Profile p, List<SpaceGen.Star> stars, double time, double vis, double r) {
+    /**
+     * Twinkling (scintillation): the brightest stars flicker quickly and randomly,
+     * dipping and flaring, a little more near the horizon where starlight crosses
+     * more air. skyAngle/tilt turn the star field like the renderer does, so the
+     * horizon boost uses each star's real height in the sky.
+     */
+    public static void twinkle(Geometry g, Profile p, List<SpaceGen.Star> stars, double time, double vis, double r,
+                               double skyAngle, double tilt) {
         double amount = Settings.TWINKLE.v(p);
-        double speed = 0.6 + Settings.TWINKLE_SPEED.v(p) * 4;
+        double rate = 2 + Settings.TWINKLE_SPEED.v(p) * 9;
+        double ca = Math.cos(skyAngle), sa = Math.sin(skyAngle), ct = Math.cos(tilt), st2 = Math.sin(tilt);
+        int i = 0;
         for (SpaceGen.Star st : stars) {
-            double tw = 1 - amount * 0.7 * (0.5 + 0.5 * Math.sin(time * speed * (0.7 + (st.phase() % 1.0)) + st.phase()))
-                    * (0.6 + 0.4 * Math.sin(time * speed * 1.7 + st.phase() * 3));
-            double a = Math.min(1, st.brightness() * tw * vis);
+            i++;
+            double[] d = st.dir();
+            // rotate like the space layer: Z by skyAngle, then X by tilt
+            double x = d[0] * ca - d[1] * sa, y = d[0] * sa + d[1] * ca, z = d[2];
+            double wy = y * ct - z * st2;
+            if (wy < -0.05) {
+                continue;
+            }
+            double nearHorizon = 1 - SkyMath.clamp01(wy / 0.6);
+            double k = amount * (0.65 + 0.6 * nearHorizon);
+            double ph = st.phase();
+            double n = 0.5 * NOISE.noise(time * rate + ph * 13.1, i * 0.37, 0.5)
+                    + 0.35 * NOISE.noise(time * rate * 2.3 + ph * 7.7, i * 0.37, 3.5)
+                    + 0.15 * NOISE.noise(time * rate * 5.1, i * 0.37 + ph, 7.5);
+            double flick = 1 + k * 1.35 * n;
+            double b = Math.min(1.2, st.brightness()) * Math.max(0.05, flick);
+            double a = Math.min(1, b * vis);
             if (a < 0.02) {
                 continue;
             }
-            g.billboard(st.dir(), r, st.size(), 0, Colors.argbf(a, st.rgb()));
+            // brighter moments look slightly bigger; colors flash a little near the horizon
+            double size = st.size() * (0.8 + 0.35 * Math.min(1.5, b));
+            int col = st.rgb();
+            if (nearHorizon > 0.3 && amount > 0) {
+                double hue = NOISE.noise(time * rate * 1.7 + ph, i * 0.11, 9.9);
+                col = Colors.mix(col, hue > 0 ? 0xFF9A8A : 0x9AC4FF, Math.abs(hue) * nearHorizon * amount * 0.8);
+            }
+            g.billboard(d, r, size, 0, Colors.argbf(a, col));
         }
     }
 

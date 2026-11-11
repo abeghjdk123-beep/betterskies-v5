@@ -42,9 +42,9 @@ final class AtmosphereLayer {
         }
         PhysicalSky.Params params = PhysicalSky.Params.of(p);
         int width = switch (Settings.QUALITY.get(p)) {
-            case "LOW" -> 128;
-            case "ULTRA" -> 384;
-            default -> 256;
+            case "LOW" -> 96;
+            case "ULTRA" -> 192;
+            default -> 128;
         };
         int gk = Objects.hash(grade.apply(0x808080), grade.apply(0xFF4020), grade.apply(0x2040FF), grade.apply(0x202020));
         // quantised sun direction: about 0.15 degrees
@@ -52,7 +52,7 @@ final class AtmosphereLayer {
                 params, width, gk, (int) Math.round(s.rain * 20), (int) Math.round(s.thunder * 20));
         double[] sun = s.sun.clone();
         Baked baked = job.get(key, () -> {
-            int h = width / 2;
+            int h = width * 4;
             int[] px = PhysicalSky.texture(width, h, sun, params);
             for (int i = 0; i < px.length; i++) {
                 px[i] = 0xFF000000 | grade.apply(SkyColors.weather(p, s, px[i] & 0xFFFFFF));

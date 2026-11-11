@@ -174,7 +174,7 @@ public final class SkyRenderer {
         // ---- 6. bright twinkling stars
         if (spaceShown != null && !spaceShown.bright().isEmpty() && spaceVis > 0.003) {
             fx.clear();
-            Effects.twinkle(fx, p, spaceShown.bright(), effects ? time : 0, spaceVis, R * 0.95);
+            Effects.twinkle(fx, p, spaceShown.bright(), effects ? time : 0, spaceVis, R * 0.95, angle + drift % SkyMath.TAU, tilt);
             Gpu.drawOnce(fx, Gpu.alpha(), spaceM, new Vector4f(1, 1, 1, 1), dot.view(), Gpu.sampler(false), "stars");
         }
 

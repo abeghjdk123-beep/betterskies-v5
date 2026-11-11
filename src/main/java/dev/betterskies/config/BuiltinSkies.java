@@ -35,8 +35,35 @@ public final class BuiltinSkies {
         return e;
     }
 
+    /** A blank canvas: every effect off and a plain, vanilla-like sky to build on. */
+    public static Profile blank() {
+        Profile p = new Profile();
+        p.name = "Blank sky";
+        SKY_MODEL.set(p, "GRADIENT");
+        DAY_CYCLE.set(p, true);
+        GRAD_DAY.set(p, Gradient.at(0.0, 0xC2D6FF, 1.0, 0x7BA4FF));
+        GRAD_DUSK.set(p, Gradient.at(0.0, 0xE8A07A, 1.0, 0x3B5590));
+        GRAD_NIGHT.set(p, Gradient.at(0.0, 0x0C1220, 1.0, 0x03050A));
+        HAZE.set(p, 0.0);
+        GLOW_MODE.set(p, "OFF");
+        FOG_TINT.set(p, "OFF");
+        CLOUD_TINT.set(p, "VANILLA");
+        SUN_STYLE.set(p, "VANILLA");
+        MOON_STYLE.set(p, "VANILLA");
+        for (Setting.Toggle t : List.of(SUN_RAYS, MOON_HALO, STARS, MILKY_WAY, NEBULA, DUST, AURORA, METEORS, SHOWERS, COMETS, SKY_CLOUDS)) {
+            t.set(p, false);
+        }
+        SC_HIDE_VANILLA.set(p, false);
+        CLOUDS.set(p, true);
+        IMAGE.set(p, "");
+        return p;
+    }
+
     private static List<Entry> build() {
         List<Entry> out = new ArrayList<>();
+
+        Entry blankEntry = new Entry("Blank sky", "Everything off and a plain sky: a clean canvas to build your own.", blank());
+        out.add(blankEntry);
 
         sky(out, "BetterSkies", "The default: a soft day, a rosy sunset and a deep violet night.", p -> {
         });
@@ -153,6 +180,7 @@ public final class BuiltinSkies {
             AURORA.set(p, true);
             AURORA_STYLE.set(p, "RIBBONS");
             AURORA_NIGHT_ONLY.set(p, false);
+            AURORA_AUTO.set(p, false);
             AURORA_COLOR.set(p, 0xFF7AD9);
             AURORA_COLOR2.set(p, 0x7A5CFF);
         });

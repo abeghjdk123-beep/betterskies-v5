@@ -69,6 +69,22 @@ public final class StudioGameTest implements FabricClientGameTest {
             look(ctx, -18f, 180f);
             ctx.waitTicks(20);
             shot(ctx, "21-sky-north-aurora");
+            look(ctx, -70f, 180f);
+            ctx.waitTicks(20);
+            shot(ctx, "22-aurora-overhead");
+            ctx.runOnClient(mc -> {
+                Settings.AURORA_STYLE.set(BetterSkies.profile(), "STORM");
+                Settings.AURORA_HEIGHT.set(BetterSkies.profile(), 0.8);
+                BetterSkies.changed();
+            });
+            look(ctx, -30f, 180f);
+            ctx.waitTicks(30);
+            shot(ctx, "23-aurora-storm");
+            ctx.runOnClient(mc -> {
+                Settings.AURORA_STYLE.reset(BetterSkies.profile());
+                Settings.AURORA_HEIGHT.reset(BetterSkies.profile());
+                BetterSkies.changed();
+            });
 
             // each realistic cloud type at midday, then puffy clouds at sunset
             sp.getServer().runCommand("time set 5000");
@@ -107,6 +123,13 @@ public final class StudioGameTest implements FabricClientGameTest {
                 ctx.waitTicks(70);
                 shot(ctx, "6-phys-" + ph[3]);
             }
+            // horizon from high up, looking slightly down: the sky must fade smoothly below the horizon
+            sp.getServer().runCommand("tp @p ~ 220 ~");
+            sp.getServer().runCommand("time set 12450");
+            look(ctx, 6f, 90f);
+            ctx.waitTicks(80);
+            shot(ctx, "6-phys-horizon-high");
+            sp.getServer().runCommand("tp @p ~ 100 ~");
             // weather presets
             for (String preset : new String[]{"Partly cloudy", "Thunderstorm", "Foggy morning"}) {
                 ctx.runOnClient(mc -> {
