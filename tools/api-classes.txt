@@ -54,3 +54,5 @@ net.minecraft.client.renderer.DynamicUniforms
 com.mojang.blaze3d.platform.cursor.CursorType
 com.mojang.blaze3d.platform.cursor.CursorTypes
 net.minecraft.client.renderer.RenderPipelines
+net.minecraft.Util
+net.minecraft.Util$OS
