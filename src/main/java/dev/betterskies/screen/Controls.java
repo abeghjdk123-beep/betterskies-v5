@@ -5,6 +5,7 @@ import dev.betterskies.config.Gradient;
 import dev.betterskies.config.Profile;
 import dev.betterskies.config.Setting;
 import dev.betterskies.config.Settings;
+import dev.betterskies.ui.Icons;
 import dev.betterskies.ui.Theme;
 import dev.betterskies.ui.Ui;
 import dev.betterskies.util.Colors;
@@ -85,7 +86,12 @@ final class Controls {
         boolean hov = enabled && ui.hover(x, y, size, size);
         float a = ui.anim("icon:" + id, hov ? 1 : 0, 14);
         ui.round(x, y, size, size, 3, Colors.argbf(0.1 * a + (enabled ? 0.04 : 0), 0xFFFFFF));
-        ui.textCenter(glyph, x + size / 2 + 1, y + (size - 8) / 2, !enabled ? t.textFaint : hov ? t.accentText() : t.text);
+        int fg = !enabled ? t.textFaint : hov ? t.accentText() : t.text;
+        if (Icons.has(glyph)) {
+            Icons.center(ui, glyph, x, y, size, size, fg);
+        } else {
+            ui.textCenter(glyph, x + size / 2 + 1, y + (size - 8) / 2, fg);
+        }
         if (enabled) {
             ui.hit(id, x, y, size, size, () -> {
                 s.click();
@@ -116,7 +122,7 @@ final class Controls {
         boolean pinned = BetterSkies.store().favorites.contains(st.id);
         if (pinned || hov) {
             boolean starHov = ui.hover(x + 2, y + 5, 10, 10);
-            ui.text(pinned ? "★" : "☆", x + 3, y + 6, pinned ? Colors.opaque(t.accent2) : starHov ? t.text : t.textFaint);
+            Icons.draw(ui, "PIN", x + 3, y + 6, pinned ? Colors.opaque(t.accent2) : starHov ? t.text : Colors.argbf(0.35, 0xFFFFFF));
             ui.hit("pin:" + st.id, x + 1, y + 4, 11, 12, () -> s.togglePin(st), pinned ? "Unpin from Home" : "Pin to the Home page");
         }
         int cw = Math.max(110, Math.min(190, (int) (w * 0.5)));
@@ -131,7 +137,7 @@ final class Controls {
             int rx = cx - 13;
             boolean rh = ui.hover(rx, y + 4, 11, 12);
             if (hov) {
-                ui.text("↺", rx + 2, y + 6, rh ? t.accentText() : t.textDim);
+                Icons.draw(ui, "RESET", rx + 2, y + 7, rh ? t.accentText() : t.textDim);
                 ui.hit("reset:" + st.id, rx, y + 4, 11, 12, () -> s.edit(() -> st.reset(p)), "Reset " + st.label + " to its default");
             } else {
                 ui.rect(rx + 5, y + 9, 2, 2, t.accent(0.8));
@@ -301,7 +307,7 @@ final class Controls {
         boolean hov = active && ui.hover(x, y, w, 14);
         ui.round(x, y, w, 14, 4, hov ? t.fieldHover : active ? t.field : 0x60241F2E);
         ui.text(ui.fit(ch.display(p), w - 16), x + 5, y + 3, active ? t.text : t.textFaint);
-        ui.text("▾", x + w - 10, y + 3, hov ? t.accentText() : t.textDim);
+        Icons.draw(ui, "CHEVRON", x + w - 10, y + 6, hov ? t.accentText() : t.textDim);
         if (active) {
             ui.hit("ch:" + ch.id, x, y, w, 14, (b, mx, my, dbl) -> {
                 if (b == 0) {

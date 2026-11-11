@@ -11,6 +11,7 @@ import dev.betterskies.config.Store;
 import dev.betterskies.render.Gpu;
 import dev.betterskies.render.ImageLibrary;
 import dev.betterskies.render.SkyRenderer;
+import dev.betterskies.ui.Icons;
 import dev.betterskies.ui.Theme;
 import dev.betterskies.ui.Ui;
 import dev.betterskies.util.Colors;
@@ -60,9 +61,9 @@ final class Pages {
     private int pageHeader(Category c, int x, int y, int w) {
         Ui ui = ui();
         Theme t = ui.t;
-        ui.textScaled(c.glyph, x, y + 1, 1.6f, Colors.opaque(t.accent2), false);
-        ui.textScaled(c.title, x + 18, y + 1, 1.35f, t.text, false);
-        ui.text(ui.fit(c.blurb, w - 90), x + 18, y + 15, t.textDim);
+        Icons.drawScaled(ui, c.name(), x, y + 2, 2, Colors.opaque(t.accent2));
+        ui.textScaled(c.title, x + 24, y + 1, 1.35f, t.text, false);
+        ui.text(ui.fit(c.blurb, w - 96), x + 24, y + 15, t.textDim);
         boolean hasSettings = c != Category.HOME && c != Category.LIBRARY && !Settings.in(c).isEmpty();
         if (hasSettings) {
             s.controls.button(ui, "resetpage", "Reset page", x + w - 66, y + 2, 66, 14, Controls.Style.GHOST,
@@ -175,7 +176,7 @@ final class Pages {
             }
             found += hits.size() + (pageMatch ? 1 : 0);
             final Category cat = c;
-            y = card("search:" + c, c.glyph + "  " + c.title, x, y, w, top -> {
+            y = card("search:" + c, c.title, x, y, w, top -> {
                 int yy = top;
                 for (Setting<?> st : hits) {
                     yy += s.controls.row(ui, st, x + 4, yy, w - 8);
@@ -220,7 +221,7 @@ final class Pages {
                     "Pick one of the built-in skies or your saved skies", () -> s.goTo(Category.LIBRARY));
             s.controls.button(ui, "h:save", "Save sky…", rx + bw + 4, py + 42, bw, 14, Controls.Style.NORMAL,
                     "Save this sky to My Skies", this::saveAs);
-            s.controls.button(ui, "h:surprise", "✦ Surprise me", rx, py + 60, bw, 14, Controls.Style.NORMAL,
+            s.controls.button(ui, "h:surprise", "Surprise me", rx, py + 60, bw, 14, Controls.Style.NORMAL,
                     "Make a random sky with matching colors (undo with Ctrl+Z)", s::surprise);
             s.controls.button(ui, "h:share", "Copy code", rx + bw + 4, py + 60, bw, 14, Controls.Style.NORMAL,
                     "Copy a share code for this sky to the clipboard", s::copyShareCode);
@@ -383,7 +384,7 @@ final class Pages {
         }, (blurb != null ? blurb + "  " : "") + "Click to use this sky (Ctrl+Z to go back)");
         if (sv != null && hov) {
             int by = y + h - 18 - lift;
-            s.controls.icon(ui, "ren:" + id, "✎", x + 4, by, 14, true, "Rename", () -> s.prompt("Rename sky", null, sv.name(), 40, v -> {
+            s.controls.icon(ui, "ren:" + id, "EDIT", x + 4, by, 14, true, "Rename", () -> s.prompt("Rename sky", null, sv.name(), 40, v -> {
                 try {
                     BetterSkies.store().renameSky(sv, v);
                     refreshSaved();
@@ -391,11 +392,11 @@ final class Pages {
                     s.toast("Couldn't rename: " + e.getMessage(), t.bad);
                 }
             }));
-            s.controls.icon(ui, "shr:" + id, "⧉", x + 20, by, 14, true, "Copy share code", () -> {
+            s.controls.icon(ui, "shr:" + id, "SHARE", x + 20, by, 14, true, "Copy share code", () -> {
                 net.minecraft.client.Minecraft.getInstance().keyboardHandler.setClipboard(Store.shareCode(sv.profile()));
                 s.toast("Share code copied", t.good);
             });
-            s.controls.icon(ui, "del:" + id, "✕", x + w - 18, by, 14, true, "Delete", () -> s.confirm("Delete \"" + sv.name() + "\"?",
+            s.controls.icon(ui, "del:" + id, "CLOSE", x + w - 18, by, 14, true, "Delete", () -> s.confirm("Delete \"" + sv.name() + "\"?",
                     "This removes the saved sky file. Your current sky is not affected.", "Delete", () -> {
                         try {
                             BetterSkies.store().deleteSky(sv);
@@ -444,7 +445,7 @@ final class Pages {
                 int cw = Math.min(80, (w - 16 - (keys.size() - 1) * 4) / keys.size());
                 for (int i = 0; i < keys.size(); i++) {
                     Setting.Grad g = keys.get(i);
-                    String glyph = g == Settings.GRAD_DAY ? "☀ " : g == Settings.GRAD_NIGHT ? "☾ " : "◒ ";
+                    String glyph = g == Settings.GRAD_DAY ? "☀ " : g == Settings.GRAD_NIGHT ? "☾ " : "";
                     int tick = KEY_TICKS[g == Settings.GRAD_DAY ? 0 : g == Settings.GRAD_DUSK ? 1 : g == Settings.GRAD_DAWN ? 2 : 3];
                     s.controls.chip(ui, "kf:" + g.id, glyph + g.label, x + 8 + i * (cw + 4), yy + 2, cw, 16, g.id.equals(keyframe),
                             "Edit the " + g.label + " colors (the sky jumps to that time so you can see it)", () -> {

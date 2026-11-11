@@ -12,6 +12,7 @@ import dev.betterskies.render.SkyColors;
 import dev.betterskies.render.SkyRenderer;
 import dev.betterskies.render.SkyState;
 import dev.betterskies.ui.History;
+import dev.betterskies.ui.Icons;
 import dev.betterskies.ui.TextField;
 import dev.betterskies.ui.Theme;
 import dev.betterskies.ui.Ui;
@@ -373,7 +374,7 @@ public final class StudioScreen extends Screen {
         // logo
         float spin = (System.currentTimeMillis() % 6000) / 6000f;
         int logoC = Colors.mixArgb(Colors.opaque(t.accent), Colors.opaque(t.accent2), 0.5 + 0.5 * Math.sin(spin * Math.PI * 2));
-        ui.textScaled("✦", x + 9, y + 8, 1.5f, logoC, false);
+        Icons.drawScaled(ui, "SPARKLE", x + 7, y + 8, 2, logoC);
         ui.text("BetterSkies", x + 25, y + 7, t.text);
         ui.text("Studio", x + 25, y + 17, Colors.opaque(t.accent2));
         int right = x + w - 6;
@@ -393,11 +394,11 @@ public final class StudioScreen extends Screen {
                 "Turn the BetterSkies sky on or off (your settings are kept)");
         right = px - 8;
         // undo / redo
-        controls.icon(ui, "redo", "↷", right - 16, y + 7, 16, history.redoCount() > 0, "Redo (Ctrl+Y)", this::redo);
-        controls.icon(ui, "undo", "↶", right - 34, y + 7, 16, history.undoCount() > 0, "Undo (Ctrl+Z) · " + history.undoCount() + " steps", this::undo);
+        controls.icon(ui, "redo", "REDO", right - 16, y + 7, 16, history.redoCount() > 0, "Redo (Ctrl+Y)", this::redo);
+        controls.icon(ui, "undo", "UNDO", right - 34, y + 7, 16, history.undoCount() > 0, "Undo (Ctrl+Z) · " + history.undoCount() + " steps", this::undo);
         right -= 40;
         // peek
-        controls.icon(ui, "peek", "◐", right - 16, y + 7, 16, true, "Hold Tab (or hold this button) to hide the editor and look at your sky", () -> {
+        controls.icon(ui, "peek", "EYE", right - 16, y + 7, 16, true, "Hold Tab (or hold this button) to hide the editor and look at your sky", () -> {
             peekMouse = true;
         });
         right -= 22;
@@ -405,7 +406,9 @@ public final class StudioScreen extends Screen {
         int sw = Math.min(170, right - (x + 92));
         if (sw > 60) {
             search.draw(ui, "search", right - sw, y + 7, sw, 16, "Find any setting by name or description");
-            ui.text("⌕", right - 11, y + 11, t.textFaint);
+            if (search.text.isEmpty() && !search.focused) {
+                Icons.draw(ui, "SEARCH", right - 12, y + 12, t.textFaint);
+            }
         }
     }
 
@@ -431,7 +434,7 @@ public final class StudioScreen extends Screen {
             }
             int gc = sel ? Colors.opaque(t.accent2) : hov ? t.text : t.textDim;
             int ty = iy + (itemH - 1 - 8) / 2;
-            ui.text(c.glyph, x + 11, ty, gc);
+            Icons.draw(ui, c.name(), x + 9, iy + (itemH - 1 - Icons.height(c.name())) / 2, gc);
             if (!compact) {
                 ui.text(ui.fit(c.title, w - 34), x + 25, ty, sel ? t.text : hov ? t.text : t.textDim);
             }
@@ -449,7 +452,7 @@ public final class StudioScreen extends Screen {
             ui.text("v5.0", x + 10, by + 18, t.textFaint);
             ui.text("F12", x + w - 26, by + 18, t.textFaint);
         } else {
-            controls.icon(ui, "adv", Settings.ADVANCED.on(p) ? "▣" : "□", x + 7, by, 16, true, "Advanced settings: " + (Settings.ADVANCED.on(p) ? "on" : "off"),
+            controls.icon(ui, "adv", "GRADE", x + 7, by, 16, true, "Advanced settings: " + (Settings.ADVANCED.on(p) ? "on" : "off"),
                     () -> edit(() -> Settings.ADVANCED.flip(p())));
         }
     }
@@ -496,7 +499,8 @@ public final class StudioScreen extends Screen {
         boolean night = tick > 12800 && tick < 23200;
         ui.text(night ? "☾" : "☀", tx, rowY + 4, Colors.opaque(night ? 0xB9C8FF : 0xFFD27A));
         ui.text(Setting.Slider.clock(tick), tx + 10, rowY + 4, t.text);
-        int lx = tx + 42, lw = Math.max(80, Math.min(170, w - 250));
+        boolean views = minecraft != null && minecraft.player != null;
+        int lx = tx + 42, lw = Math.max(70, Math.min(170, w - 162 - 46 - (views ? 56 : 0)));
         ui.round(lx - 1, rowY + 1, lw + 2, 14, 3, 0x60000000);
         previews.timeline(ui, p, BetterSkies.revision(), lx, rowY + 2, lw, 12);
         int mxp = lx + (int) Math.round(tick / 24000.0 * lw);
@@ -514,8 +518,8 @@ public final class StudioScreen extends Screen {
                 "Show the world's real time again", () -> BetterSkies.setPreviewTime(-1));
         // view buttons
         int vx = lx + lw + 50;
-        if (minecraft != null && minecraft.player != null && x + w - 120 > vx + 20) {
-            String[] names = {"⬌", "◠", "⬆"};
+        if (views && vx + 3 * 17 <= x + w - 112) {
+            String[] names = {"VIEW_HORIZON", "VIEW_SKY", "VIEW_UP"};
             String[] tips = {"Look at the horizon", "Look up at the sky", "Look straight up"};
             for (int i = 0; i < 3; i++) {
                 int vi = i;

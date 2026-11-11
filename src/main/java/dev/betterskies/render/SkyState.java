@@ -42,7 +42,7 @@ public final class SkyState {
         this.day = d;
         this.night = n;
         this.dusk = Math.max(0, 1 - d - n);
-        this.darkness = SkyMath.smooth(0.12, -0.18, sunHeight);
+        this.darkness = SkyMath.smooth(0.04, -0.2, sunHeight);
         this.rain = rain;
         this.thunder = thunder;
         int phase = SkyMath.moonPhase(t);

@@ -51,7 +51,13 @@ public final class StudioGameTest implements FabricClientGameTest {
             String[] names = {"morning", "noon", "sunset", "dusk", "midnight", "sunrise"};
             for (int i = 0; i < times.length; i++) {
                 sp.getServer().runCommand("time set " + times[i]);
-                look(ctx, i == 1 ? -60f : -12f, i >= 3 && i <= 4 ? 0f : 270f);
+                // yaw: 90 = west (sunset), 270 = east (sunrise), 0 = south
+                float yaw = switch (i) {
+                    case 2, 3 -> 90f;
+                    case 0, 5 -> 270f;
+                    default -> 0f;
+                };
+                look(ctx, i == 1 ? -60f : -12f, yaw);
                 ctx.waitTicks(i == 0 ? 120 : 40);
                 shot(ctx, String.format("1%d-sky-%s", i, names[i]));
             }
@@ -60,6 +66,9 @@ public final class StudioGameTest implements FabricClientGameTest {
             look(ctx, -89f, 0f);
             ctx.waitTicks(30);
             shot(ctx, "20-sky-zenith-night");
+            look(ctx, -18f, 180f);
+            ctx.waitTicks(20);
+            shot(ctx, "21-sky-north-aurora");
 
             // a few built-in looks
             for (String sky : new String[]{"Synthwave", "Blood Moon", "Boreal Night"}) {
@@ -71,7 +80,7 @@ public final class StudioGameTest implements FabricClientGameTest {
                         }
                     }
                 });
-                look(ctx, -15f, 0f);
+                look(ctx, -15f, sky.equals("Boreal Night") ? 180f : 0f);
                 ctx.waitTicks(80);
                 shot(ctx, "3-preset-" + sky.replace(' ', '_'));
             }
