@@ -41,3 +41,7 @@ com.mojang.blaze3d.systems.RenderSystem
 net.minecraft.client.gui.components.toasts.SystemToast
 net.minecraft.client.renderer.state.SkyRenderState
 net.minecraft.world.attribute.EnvironmentAttributes
+net.minecraft.client.renderer.fog.FogRenderer
+com.mojang.blaze3d.pipeline.RenderPipeline
+com.mojang.blaze3d.vertex.BufferBuilder
+net.minecraft.resources.Identifier

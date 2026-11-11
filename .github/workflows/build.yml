@@ -20,15 +20,20 @@ jobs:
       - name: Build the mod
         run: |
           chmod +x ./gradlew
-          ./gradlew build --stacktrace
+          set -o pipefail
+          ./gradlew build --stacktrace 2>&1 | tee build.log
       - name: Dump API signatures (dev aid)
         if: always() && hashFiles('tools/api-classes.txt') != ''
         run: bash tools/dump-api.sh > api-dump.txt 2>&1 || true
-      - uses: actions/upload-artifact@v4
-        if: always() && hashFiles('api-dump.txt') != ''
-        with:
-          name: api-dump
-          path: api-dump.txt
+      - name: Save build log to the ci-logs branch
+        if: always()
+        run: |
+          mkdir -p /tmp/logs && cp build.log /tmp/logs/ 2>/dev/null || true
+          cp api-dump.txt /tmp/logs/ 2>/dev/null || true
+          cd /tmp/logs && git init -q && git checkout -q -b ci-logs
+          git -c user.name=ci -c user.email=ci@localhost add -A
+          git -c user.name=ci -c user.email=ci@localhost commit -qm "logs for ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" ci-logs
       - uses: actions/upload-artifact@v4
         with:
           name: BetterSkies-jar
