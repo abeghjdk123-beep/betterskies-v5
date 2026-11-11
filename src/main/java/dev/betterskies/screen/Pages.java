@@ -445,9 +445,8 @@ final class Pages {
                 int cw = Math.min(80, (w - 16 - (keys.size() - 1) * 4) / keys.size());
                 for (int i = 0; i < keys.size(); i++) {
                     Setting.Grad g = keys.get(i);
-                    String glyph = g == Settings.GRAD_DAY ? "☀ " : g == Settings.GRAD_NIGHT ? "☾ " : "";
                     int tick = KEY_TICKS[g == Settings.GRAD_DAY ? 0 : g == Settings.GRAD_DUSK ? 1 : g == Settings.GRAD_DAWN ? 2 : 3];
-                    s.controls.chip(ui, "kf:" + g.id, glyph + g.label, x + 8 + i * (cw + 4), yy + 2, cw, 16, g.id.equals(keyframe),
+                    s.controls.chip(ui, "kf:" + g.id, g.label, x + 8 + i * (cw + 4), yy + 2, cw, 16, g.id.equals(keyframe),
                             "Edit the " + g.label + " colors (the sky jumps to that time so you can see it)", () -> {
                                 keyframe = g.id;
                                 s.previewAt(tick);
