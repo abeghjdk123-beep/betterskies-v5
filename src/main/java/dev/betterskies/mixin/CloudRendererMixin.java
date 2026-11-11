@@ -5,19 +5,17 @@ import dev.betterskies.config.Profile;
 import dev.betterskies.config.Settings;
 import dev.betterskies.render.SkyRenderer;
 import dev.betterskies.util.Colors;
+import net.minecraft.client.renderer.CloudRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Clouds (CloudRenderer, intermediary class_9955).
- * method_62168 = render(int color, CloudStatus, float height, Vec3 camera, long gameTime, float partialTick).
- */
-@Mixin(targets = "net.minecraft.class_9955", remap = false)
+/** Clouds: CloudRenderer.render(int color, CloudStatus, float height, Vec3 camera, long gameTime, float partialTick). */
+@Mixin(CloudRenderer.class)
 public abstract class CloudRendererMixin {
-    @Inject(method = "method_62168", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = "render", at = @At("HEAD"), cancellable = true)
     private void betterskies$hide(CallbackInfo ci) {
         Profile p = BetterSkies.profile();
         if (Settings.ENABLED.on(p) && !Settings.CLOUDS.on(p)) {
@@ -25,7 +23,7 @@ public abstract class CloudRendererMixin {
         }
     }
 
-    @ModifyVariable(method = "method_62168", at = @At("HEAD"), argsOnly = true, ordinal = 0, remap = false)
+    @ModifyVariable(method = "render", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private int betterskies$color(int original) {
         Profile p = BetterSkies.profile();
         if (!Settings.ENABLED.on(p)) {
@@ -43,7 +41,7 @@ public abstract class CloudRendererMixin {
         return (Math.max(0, Math.min(255, alpha)) << 24) | rgb;
     }
 
-    @ModifyVariable(method = "method_62168", at = @At("HEAD"), argsOnly = true, ordinal = 0, remap = false)
+    @ModifyVariable(method = "render", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private float betterskies$height(float original) {
         Profile p = BetterSkies.profile();
         if (!Settings.ENABLED.on(p)) {

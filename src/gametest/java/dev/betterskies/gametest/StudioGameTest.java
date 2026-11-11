@@ -26,9 +26,17 @@ public final class StudioGameTest implements FabricClientGameTest {
         shot(ctx, "00-title-studio");
         ctx.setScreen(() -> null);
 
+        // software rendering in CI is slow: load the world small and close, then go big for screenshots
+        ctx.runOnClient(mc -> {
+            mc.options.renderDistance().set(2);
+            mc.options.simulationDistance().set(5);
+        });
+        ctx.getInput().resizeWindow(854, 480);
+        ctx.waitTicks(5);
         try (TestSingleplayerContext sp = ctx.worldBuilder().create()) {
             sp.getClientWorld().waitForChunksRender();
-            sp.getServer().runCommand("gamerule doDaylightCycle false");
+            ctx.getInput().resizeWindow(1920, 1080);
+            ctx.waitTicks(10);
             sp.getServer().runCommand("weather clear");
             ctx.runOnClient(mc -> {
                 Profile p = BetterSkies.profile();

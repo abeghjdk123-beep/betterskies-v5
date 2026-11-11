@@ -3,7 +3,7 @@ package dev.betterskies.mixin;
 import dev.betterskies.BetterSkies;
 import dev.betterskies.config.Profile;
 import dev.betterskies.config.Settings;
-import dev.betterskies.render.SkyRenderer;
+import net.minecraft.client.renderer.SkyRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -11,24 +11,23 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Hooks Minecraft's SkyRenderer (intermediary class_9975). Intermediary names are
- * used directly (remap = false) because that is what released games run:
+ * Hooks Minecraft's SkyRenderer:
  * <ul>
- *   <li>method_62302 renderSkyDisc(int) - BetterSkies draws its whole sky here</li>
- *   <li>method_62305 renderDarkDisc()</li>
- *   <li>method_62306 renderSunriseAndSunset(PoseStack, float, int)</li>
- *   <li>method_62303 sun, method_62304 moon, method_62310 stars (private parts of renderSunMoonAndStars)</li>
+ *   <li>renderSkyDisc(int) - BetterSkies draws its whole sky here</li>
+ *   <li>renderDarkDisc(), renderSunriseAndSunset(...)</li>
+ *   <li>renderSun / renderMoon / renderStars (private parts of renderSunMoonAndStars)</li>
  * </ul>
+ * Mojang names; Loom remaps them for the released jar.
  */
-@Mixin(targets = "net.minecraft.class_9975", remap = false)
+@Mixin(SkyRenderer.class)
 public abstract class SkyRendererMixin {
     @Unique
     private static boolean betterskies$warned;
 
-    @Inject(method = "method_62302", at = @At("HEAD"), cancellable = true, remap = false, require = 1)
+    @Inject(method = "renderSkyDisc", at = @At("HEAD"), cancellable = true, require = 1)
     private void betterskies$sky(int color, CallbackInfo ci) {
         try {
-            if (SkyRenderer.render()) {
+            if (dev.betterskies.render.SkyRenderer.render()) {
                 ci.cancel();
             }
         } catch (Throwable t) {
@@ -39,14 +38,14 @@ public abstract class SkyRendererMixin {
         }
     }
 
-    @Inject(method = "method_62305", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = "renderDarkDisc", at = @At("HEAD"), cancellable = true)
     private void betterskies$darkDisc(CallbackInfo ci) {
         if (Settings.ENABLED.on(BetterSkies.profile())) {
             ci.cancel();
         }
     }
 
-    @Inject(method = "method_62306", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = "renderSunriseAndSunset", at = @At("HEAD"), cancellable = true)
     private void betterskies$sunriseFan(CallbackInfo ci) {
         Profile p = BetterSkies.profile();
         if (Settings.ENABLED.on(p) && !Settings.GLOW_MODE.is(p, "VANILLA")) {
@@ -54,7 +53,7 @@ public abstract class SkyRendererMixin {
         }
     }
 
-    @Inject(method = "method_62303", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = "renderSun", at = @At("HEAD"), cancellable = true)
     private void betterskies$sun(CallbackInfo ci) {
         Profile p = BetterSkies.profile();
         if (Settings.ENABLED.on(p) && !Settings.SUN_STYLE.is(p, "VANILLA")) {
@@ -62,7 +61,7 @@ public abstract class SkyRendererMixin {
         }
     }
 
-    @Inject(method = "method_62304", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = "renderMoon", at = @At("HEAD"), cancellable = true)
     private void betterskies$moon(CallbackInfo ci) {
         Profile p = BetterSkies.profile();
         if (Settings.ENABLED.on(p) && !Settings.MOON_STYLE.is(p, "VANILLA")) {
@@ -70,7 +69,7 @@ public abstract class SkyRendererMixin {
         }
     }
 
-    @Inject(method = "method_62310", at = @At("HEAD"), cancellable = true, remap = false)
+    @Inject(method = "renderStars", at = @At("HEAD"), cancellable = true)
     private void betterskies$stars(CallbackInfo ci) {
         if (Settings.ENABLED.on(BetterSkies.profile())) {
             ci.cancel();

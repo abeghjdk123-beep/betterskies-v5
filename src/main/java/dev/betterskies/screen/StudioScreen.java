@@ -413,8 +413,10 @@ public final class StudioScreen extends Screen {
         int x = panelX, y = headerH, w = sidebarW, h = height - headerH - footerH;
         ui.rect(x + w - 1, y, 1, h, 0x14FFFFFF);
         boolean compact = w < 60;
-        int iy = y + 6;
-        int itemH = compact ? 20 : 19;
+        int reserve = compact ? 26 : 38;
+        int count = Category.values().length;
+        int itemH = Math.max(13, Math.min(compact ? 20 : 19, (h - reserve - 8) / count));
+        int iy = y + 4;
         boolean searching = !search.text.isBlank();
         for (Category c : Category.values()) {
             boolean sel = !searching && c == page;
@@ -428,9 +430,10 @@ public final class StudioScreen extends Screen {
                 ui.round(x + 2, Math.round(bar) + 3, 3, itemH - 7, 1, Colors.opaque(t.accent));
             }
             int gc = sel ? Colors.opaque(t.accent2) : hov ? t.text : t.textDim;
-            ui.text(c.glyph, x + (compact ? 11 : 11), iy + 5, gc);
+            int ty = iy + (itemH - 1 - 8) / 2;
+            ui.text(c.glyph, x + 11, ty, gc);
             if (!compact) {
-                ui.text(ui.fit(c.title, w - 34), x + 25, iy + 5, sel ? t.text : hov ? t.text : t.textDim);
+                ui.text(ui.fit(c.title, w - 34), x + 25, ty, sel ? t.text : hov ? t.text : t.textDim);
             }
             ui.hit("side:" + c, x + 4, iy, w - 8, itemH - 1, () -> {
                 click();

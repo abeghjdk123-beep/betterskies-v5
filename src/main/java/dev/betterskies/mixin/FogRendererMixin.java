@@ -7,16 +7,17 @@ import dev.betterskies.render.SkyRenderer;
 import dev.betterskies.util.Colors;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.renderer.fog.FogRenderer;
 import org.joml.Vector4f;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-/** Fog color (FogRenderer, intermediary class_758; method_62185 = computeFogColor). */
-@Mixin(targets = "net.minecraft.class_758", remap = false)
+/** Fog color: FogRenderer.computeFogColor(Camera, float, ClientLevel, int, float). */
+@Mixin(FogRenderer.class)
 public abstract class FogRendererMixin {
-    @Inject(method = "method_62185", at = @At("RETURN"), cancellable = true, remap = false)
+    @Inject(method = "computeFogColor", at = @At("RETURN"), cancellable = true)
     private void betterskies$fog(CallbackInfoReturnable<Vector4f> cir) {
         Profile p = BetterSkies.profile();
         Vector4f v = cir.getReturnValue();
