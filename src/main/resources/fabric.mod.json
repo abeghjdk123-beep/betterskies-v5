@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "betterskies",
+  "version": "${version}",
+  "name": "BetterSkies",
+  "description": "A full sky studio: multi-stop gradients with day/night keyframes, procedural stars, Milky Way and nebulae, northern lights, meteors and comets, custom sun and moon, panorama/cubemap sky images, sky-only color grading, cloud and fog styling, and a redesigned in-game editor (press F12).",
+  "authors": ["Tilted_Twyn"],
+  "contributors": ["BetterSkies v5 remake"],
+  "contact": {
+    "sources": "https://github.com/abeghjdk123-beep/betterskies-v5",
+    "issues": "https://github.com/abeghjdk123-beep/betterskies-v5/issues"
+  },
+  "license": "MIT",
+  "icon": "assets/betterskies/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": ["dev.betterskies.BetterSkies"],
+    "modmenu": ["dev.betterskies.compat.ModMenuCompat"]
+  },
+  "mixins": ["betterskies.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.17.0",
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "modmenu": "*"
+  },
+  "breaks": {
+    "smoothskygradient": "*"
+  }
+}
