@@ -56,3 +56,4 @@ com.mojang.blaze3d.platform.cursor.CursorTypes
 net.minecraft.client.renderer.RenderPipelines
 net.minecraft.Util
 net.minecraft.Util$OS
+net.minecraft.util.Util

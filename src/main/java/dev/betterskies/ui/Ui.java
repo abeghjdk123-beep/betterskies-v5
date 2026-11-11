@@ -1,5 +1,7 @@
 package dev.betterskies.ui;
 
+import com.mojang.blaze3d.platform.cursor.CursorType;
+import com.mojang.blaze3d.platform.cursor.CursorTypes;
 import dev.betterskies.util.Colors;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
@@ -53,6 +55,7 @@ public final class Ui {
     private final Deque<int[]> clips = new ArrayDeque<>();
     private int[] clip = {-100000, -100000, 100000, 100000};
     public String help;
+    private CursorType cursor;
     private long last = System.nanoTime();
 
     public void begin(GuiGraphics g, Font font, int mx, int my, Theme t, boolean animations) {
@@ -67,6 +70,7 @@ public final class Ui {
         last = now;
         building = new ArrayList<>();
         help = null;
+        cursor = null;
         layer = 0;
         clips.clear();
         clip = new int[]{-100000, -100000, 100000, 100000};
@@ -74,6 +78,16 @@ public final class Ui {
 
     public void end() {
         hits = building;
+        if (cursor != null) {
+            g.requestCursor(cursor);
+        }
+    }
+
+    /** Asks for a specific mouse cursor this frame (first request wins). */
+    public void cursor(CursorType type) {
+        if (cursor == null) {
+            cursor = type;
+        }
     }
 
     // ================================================================== hits & hover
@@ -90,8 +104,13 @@ public final class Ui {
 
     public void hit(String id, int x, int y, int w, int h, Click click, Drag drag, String help) {
         building.add(new Hit(id, x, y, w, h, clip[0], clip[1], clip[2], clip[3], click, drag, help, layer));
-        if (help != null && hover(x, y, w, h)) {
-            this.help = help;
+        if (hover(x, y, w, h)) {
+            if (help != null) {
+                this.help = help;
+            }
+            if (cursor == null) {
+                cursor = drag != null ? CursorTypes.RESIZE_EW : CursorTypes.POINTING_HAND;
+            }
         }
     }
 

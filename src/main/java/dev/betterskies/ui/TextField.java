@@ -62,6 +62,9 @@ public final class TextField {
             }
             ui.popClip();
         }
+        if (hov) {
+            ui.cursor(com.mojang.blaze3d.platform.cursor.CursorTypes.IBEAM);
+        }
         ui.hit(id, x, y, w, h, (b, mx, my, dbl) -> {
             focused = true;
             blink = 0;

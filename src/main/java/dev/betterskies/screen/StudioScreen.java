@@ -24,7 +24,7 @@ import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.Util;
+import net.minecraft.util.Util;
 import org.lwjgl.glfw.GLFW;
 
 import java.nio.file.Path;
