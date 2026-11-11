@@ -316,7 +316,7 @@ public final class Effects {
                 double[] flat = r < 1e-6 ? sunFlat : SkyMath.norm(new double[]{x, 0, z});
                 double toward = Math.max(0, SkyMath.dot(flat, sunFlat));
                 double warm = sunsetAmount * (0.3 + 0.7 * toward * toward) * (0.55 + 0.45 * (1 - el / 90));
-                int c = Colors.mixOklab(0xFFFFFF, sunset, Math.min(1, warm * 0.9));
+                int c = Colors.mixOklab(0xFFFFFF, sunset, Math.min(1, warm * 1.15));
                 c = Colors.mix(c, 0x8C9AC0, s.darkness * 0.45);
                 c = Colors.mix(c, 0xA6ABB4, s.rain * 0.5);
                 col[j] = Colors.argbf(fade * Math.min(1, 1 + 0.5 * s.rain), Colors.scale(c, light));

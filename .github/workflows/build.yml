@@ -52,7 +52,7 @@ jobs:
             build/libs/*.jar
             !build/libs/*-sources.jar
       - name: Publish to the "latest" release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

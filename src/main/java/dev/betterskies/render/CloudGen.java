@@ -23,8 +23,8 @@ public final class CloudGen {
         public static Input of(Profile p) {
             int size = switch (Settings.QUALITY.get(p)) {
                 case "LOW" -> 512;
-                case "ULTRA" -> 2048;
-                default -> 1024;
+                case "BALANCED" -> 1024;
+                default -> 2048;
             };
             Grade g = new Grade(p);
             int gk = Objects.hash(g.apply(0x808080), g.apply(0xFF4020), g.apply(0x2040FF), g.apply(0x202020), g.apply(0xE0E0E0));
@@ -186,12 +186,12 @@ public final class CloudGen {
                     out[y * n + x] = 0;
                     continue;
                 }
-                double thick = SkyMath.smooth(threshold + 0.02, threshold + 0.28, field);
+                double thick = SkyMath.smooth(threshold + 0.08, threshold + 0.5, field);
                 double alpha = Math.pow(d, 0.85) * (0.3 + 0.7 * in.density);
                 if ("CIRRUS".equals(type)) {
                     alpha *= 0.75;
                 }
-                int rgb = Colors.mixOklab(lit, shadow, thick * (0.35 + 0.55 * in.density));
+                int rgb = Colors.mixOklab(lit, shadow, thick * thick * (0.2 + 0.4 * in.density));
                 out[y * n + x] = Colors.argbf(Math.min(1, alpha), rgb);
             }
         });
