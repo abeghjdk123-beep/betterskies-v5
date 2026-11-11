@@ -61,6 +61,30 @@ public final class SkyColors {
         return c;
     }
 
+    /** How strongly the Real atmosphere shows over the gradient right now (0 when using gradients). */
+    public static double physicalWeight(Profile p, SkyState s) {
+        if (!Settings.SKY_MODEL.is(p, "PHYSICAL")) {
+            return 0;
+        }
+        double w = 1 - Settings.PHYS_BLEND.v(p);
+        if (Settings.PHYS_NIGHT.on(p)) {
+            w *= 1 - 0.97 * s.darkness;
+        }
+        return w;
+    }
+
+    /** The color you'd actually see at an elevation (gradient mixed with the real atmosphere), for previews. */
+    public static int skyColorAt(Profile p, SkyState s, double elevation) {
+        int c = colorAtElevation(p, s, elevation);
+        double w = physicalWeight(p, s);
+        if (w > 0.003) {
+            double sunAz = Math.toDegrees(Math.atan2(s.sun[0], -s.sun[2]));
+            int phys = PhysicalSky.color(SkyMath.dirFromAngles(sunAz + 100, elevation), s.sun, PhysicalSky.Params.of(p));
+            c = Colors.mix(c, phys, w);
+        }
+        return c;
+    }
+
     /** Applies rain darkening and the storm tint. */
     public static int weather(Profile p, SkyState s, int c) {
         double storm = Math.max(s.rain, s.thunder) * Settings.STORM_STRENGTH.v(p);

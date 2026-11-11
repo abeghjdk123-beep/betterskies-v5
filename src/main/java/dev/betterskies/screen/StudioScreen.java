@@ -296,8 +296,8 @@ public final class StudioScreen extends Screen {
             int rows = 64;
             for (int i = 0; i < rows; i++) {
                 double el0 = 80 - 95.0 * i / rows, el1 = 80 - 95.0 * (i + 1) / rows;
-                int c0 = 0xFF000000 | grade.apply(SkyColors.colorAtElevation(p, s, el0));
-                int c1 = 0xFF000000 | grade.apply(SkyColors.colorAtElevation(p, s, el1));
+                int c0 = 0xFF000000 | grade.apply(SkyColors.skyColorAt(p, s, el0));
+                int c1 = 0xFF000000 | grade.apply(SkyColors.skyColorAt(p, s, el1));
                 g.fillGradient(0, height * i / rows, width, height * (i + 1) / rows, c0, c1);
             }
         }

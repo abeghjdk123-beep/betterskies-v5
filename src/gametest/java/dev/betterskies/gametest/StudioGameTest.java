@@ -93,6 +93,62 @@ public final class StudioGameTest implements FabricClientGameTest {
             ctx.waitTicks(20);
             shot(ctx, "27-clouds-overhead");
 
+            // real atmosphere: noon, sunset toward the sun, dusk away from it (Earth's shadow, Belt of Venus)
+            ctx.runOnClient(mc -> {
+                Settings.SKY_MODEL.set(BetterSkies.profile(), "PHYSICAL");
+                Settings.SC_COVERAGE.set(BetterSkies.profile(), 0.35);
+                BetterSkies.changed();
+            });
+            Object[][] phys = {{6000, -50f, 0f, "noon"}, {11800, -8f, 90f, "afternoon-sun"}, {12500, -6f, 90f, "sunset"},
+                    {13000, -6f, 270f, "dusk-east"}, {13400, -15f, 90f, "twilight"}};
+            for (Object[] ph : phys) {
+                sp.getServer().runCommand("time set " + ph[0]);
+                look(ctx, (Float) ph[1], (Float) ph[2]);
+                ctx.waitTicks(70);
+                shot(ctx, "6-phys-" + ph[3]);
+            }
+            // weather presets
+            for (String preset : new String[]{"Partly cloudy", "Thunderstorm", "Foggy morning"}) {
+                ctx.runOnClient(mc -> {
+                    for (var lk : dev.betterskies.config.BuiltinSkies.WEATHER) {
+                        if (lk.name().equals(preset)) {
+                            lk.apply().accept(BetterSkies.profile());
+                        }
+                    }
+                    BetterSkies.changed();
+                });
+                if (preset.equals("Thunderstorm")) {
+                    sp.getServer().runCommand("weather thunder");
+                }
+                sp.getServer().runCommand("time set " + (preset.equals("Foggy morning") ? 400 : 10500));
+                look(ctx, -12f, 90f);
+                ctx.waitTicks(70);
+                shot(ctx, "7-weather-" + preset.replace(' ', '_'));
+                sp.getServer().runCommand("weather clear");
+            }
+            // built-in moving panoramas
+            for (String img : new String[]{dev.betterskies.render.ImageLibrary.BUILTIN_CLOUDS, dev.betterskies.render.ImageLibrary.BUILTIN_AURORA}) {
+                boolean aurora = img.contains("Aurora");
+                ctx.runOnClient(mc -> {
+                    var p = BetterSkies.profile();
+                    p.loadLook(new Profile());
+                    Settings.SKY_CLOUDS.set(p, false);
+                    Settings.IMAGE.set(p, img);
+                    Settings.IMAGE_FLOW.set(p, 0.6);
+                    Settings.IMAGE_SHIMMER.set(p, aurora ? 0.6 : 0);
+                    Settings.IMAGE_BLEND.set(p, aurora ? "ADD" : "NORMAL");
+                    BetterSkies.changed();
+                });
+                sp.getServer().runCommand("time set " + (aurora ? 18000 : 5000));
+                look(ctx, -20f, aurora ? 180f : 0f);
+                ctx.waitTicks(120);
+                shot(ctx, "8-panorama-" + (aurora ? "aurora" : "clouds"));
+            }
+            ctx.runOnClient(mc -> {
+                BetterSkies.profile().loadLook(new Profile());
+                BetterSkies.changed();
+            });
+
             // a few built-in looks
             for (String sky : new String[]{"Synthwave", "Blood Moon", "Boreal Night"}) {
                 ctx.runOnClient(mc -> {
@@ -131,6 +187,16 @@ public final class StudioGameTest implements FabricClientGameTest {
             ctx.setScreen(() -> StudioScreen.openAt(Category.ATMOSPHERE));
             ctx.waitTicks(15);
             shot(ctx, "53-clouds-page");
+            ctx.runOnClient(mc -> {
+                Settings.SKY_MODEL.set(BetterSkies.profile(), "PHYSICAL");
+                BetterSkies.changed();
+            });
+            ctx.setScreen(() -> StudioScreen.openAt(Category.COLORS));
+            ctx.waitTicks(15);
+            shot(ctx, "54-colors-physical");
+            ctx.setScreen(() -> StudioScreen.openAt(Category.IMAGES));
+            ctx.waitTicks(200);
+            shot(ctx, "55-images-page");
             ctx.setScreen(() -> StudioScreen.openSearch("color"));
             ctx.waitTicks(15);
             shot(ctx, "51-search");

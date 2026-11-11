@@ -40,7 +40,36 @@ public final class Settings {
 
     // ================================================================== colors
     static {
-        page(Category.COLORS, "Day cycle");
+        page(Category.COLORS, "Sky model");
+    }
+
+    public static final Choice SKY_MODEL = choice("sky_model", "Sky colors from", "GRADIENT", "Where the sky's colors come from.",
+            opt("GRADIENT", "My gradients", "Your own gradients below, blended through the day."),
+            opt("PHYSICAL", "Real atmosphere", "Physically based light scattering: true blue skies, real sunsets, Earth's shadow and the Belt of Venus."));
+    private static final Predicate<Profile> PHYS = p -> SKY_MODEL.is(p, "PHYSICAL");
+    public static final Slider PHYS_BLEND = when(slider("phys_blend", "Mix in my gradients", 0, 0, 1, 0.01, Unit.PERCENT,
+            "Blend your own gradient colors over the real atmosphere for a stylised look."), PHYS);
+    public static final Toggle PHYS_NIGHT = when(toggle("phys_night", "Use my Night gradient after dark", true,
+            "After sunset fade into your Night gradient instead of the real (very dark) night sky."), PHYS);
+    public static final Slider PHYS_HAZE = when(slider("phys_haze", "Haze", 0.25, 0, 1, 0.01, Unit.PERCENT,
+            "Dust and moisture in the air: crisp deep-blue (low) to milky, glowing horizons and bigger sun glow (high)."), PHYS);
+    public static final Slider PHYS_AIR = when(slider("phys_air", "Air thickness", 1, 0.3, 3, 0.05, Unit.MULTIPLIER,
+            "More air means deeper blues and redder, darker sunsets (like a thicker atmosphere)."), PHYS);
+    public static final Slider PHYS_OZONE = when(slider("phys_ozone", "Ozone", 1, 0, 2.5, 0.05, Unit.MULTIPLIER,
+            "Ozone gives twilight its rich blue and purple tones after the sun sets."), PHYS);
+    public static final Slider PHYS_SUN_GLOW = when(slider("phys_sun_glow", "Glow around the sun", 0.5, 0, 1, 0.01, Unit.PERCENT,
+            "Wide soft glow (low) to a tight, intense halo around the sun (high)."), PHYS);
+    public static final Slider PHYS_EXPOSURE = when(slider("phys_exposure", "Sky brightness", 0, -2, 2, 0.1, Unit.EV,
+            "Overall brightness of the real atmosphere."), PHYS);
+    public static final Slider PHYS_ALTITUDE = adv(when(slider("phys_altitude", "Viewing altitude", 0, 0, 1, 0.01, Unit.PERCENT,
+            "Ground level (0%) up to 12 km: higher up the sky turns a deeper, darker blue."), PHYS));
+    public static final Color PHYS_GROUND = adv(when(color("phys_ground", "Ground color", 0x4F6140,
+            "Color of the land below the horizon, which also bounces light into the low sky."), PHYS));
+    public static final Color PHYS_TINT = adv(when(color("phys_tint", "Atmosphere tint", 0xFFFFFF,
+            "Multiplies every sky color (white = no change). Use it for alien atmospheres."), PHYS));
+
+    static {
+        section("Day cycle");
     }
 
     public static final Toggle DAY_CYCLE = toggle("day_cycle", "Day cycle", true,
@@ -114,6 +143,24 @@ public final class Settings {
             "Color of the light around the sun."), CUSTOM_SUN));
     public static final Slider SUN_CORONA = adv(when(slider("sun_corona", "Corona rays", 0.2, 0, 1, 0.01, Unit.PERCENT,
             "Faint rays streaming out of the sun."), CUSTOM_SUN));
+
+    static {
+        section("Sun rays");
+    }
+
+    public static final Toggle SUN_RAYS = toggle("sun_rays", "Sun rays", true,
+            "Beams of light fanning out from the sun, strongest when it shines through gaps in the clouds.");
+    private static final Predicate<Profile> RAYS_ON = p -> SUN_RAYS.on(p);
+    public static final Slider RAYS_STRENGTH = when(slider("rays_strength", "Strength", 0.55, 0, 1, 0.01, Unit.PERCENT,
+            "How bright the beams are."), RAYS_ON);
+    public static final Slider RAYS_LENGTH = when(slider("rays_length", "Length", 0.5, 0, 1, 0.01, Unit.PERCENT,
+            "How far the beams reach across the sky."), RAYS_ON);
+    public static final Slider RAYS_COUNT = when(slider("rays_count", "Number of rays", 0.5, 0, 1, 0.01, Unit.PERCENT,
+            "A few broad beams (low) or many fine ones (high)."), RAYS_ON);
+    public static final Toggle RAYS_CLOUDS_ONLY = when(toggle("rays_clouds_only", "Only through clouds", false,
+            "Show beams only where realistic clouds partly cover the sun (most natural)."), RAYS_ON);
+    public static final Color RAYS_COLOR = adv(when(color("rays_color", "Ray color", 0xFFE6B8,
+            "Color of the beams (with Real atmosphere they also take on the sunlight's color)."), RAYS_ON));
 
     static {
         section("Moon");
@@ -322,6 +369,12 @@ public final class Settings {
             "Glow the clouds take on at sunrise and sunset (strongest toward the sun)."), SC_ON);
     public static final Slider SC_NIGHT = adv(when(slider("sc_night", "Night brightness", 0.12, 0, 1, 0.01, Unit.PERCENT,
             "How visible clouds stay at night (moonlight)."), SC_ON));
+    public static final Slider SC_SUN_SHINE = when(slider("sc_sun_shine", "Sunlight through clouds", 0.7, 0, 1, 0.01, Unit.PERCENT,
+            "Clouds near the sun light up: glowing silver edges and brighter, sun-colored cloud bodies."), SC_ON);
+    public static final Slider SC_SUN_SPREAD = adv(when(slider("sc_sun_spread", "Shine spread", 0.5, 0, 1, 0.01, Unit.PERCENT,
+            "How far from the sun clouds are lit up."), SC_ON));
+    public static final Toggle SC_LIGHTNING = when(toggle("sc_lightning", "Lightning in storm clouds", true,
+            "During thunderstorms, flashes light up the clouds from inside."), SC_ON);
     public static final Toggle SC_PARALLAX = adv(when(toggle("sc_parallax", "Move as you walk", true,
             "Clouds slowly slide past as you travel, like real distant clouds."), SC_ON));
     public static final Toggle SC_HIDE_VANILLA = when(toggle("sc_hide_vanilla", "Hide blocky clouds", true,
@@ -405,7 +458,28 @@ public final class Settings {
     public static final Choice IMAGE_SHOW = when(choice("image_show", "Visible", "ALWAYS", "When the image appears.",
             opt("ALWAYS", "Always", ""), opt("NIGHT", "At night", "Fades in as the sun sets."), opt("DAY", "During the day", "Fades out at night.")), IMG_ON);
     public static final Slider IMAGE_ROTATION = when(slider("image_rotation", "Rotation", 0, 0, 359, 1, Unit.DEGREES, "Turns the picture around you."), IMG_ON);
-    public static final Slider IMAGE_SPIN = when(slider("image_spin", "Spin", 0, -1, 1, 0.01, Unit.SIGNED_PERCENT, "Slowly turns the picture over time."), IMG_ON);
+    public static final Slider IMAGE_SPIN = when(slider("image_spin", "Drift", 0, -1, 1, 0.01, Unit.SIGNED_PERCENT,
+            "Slowly turns the whole picture around you (left or right)."), IMG_ON);
+
+    static {
+        section("Motion");
+    }
+
+    public static final Slider IMAGE_FLOW = when(slider("image_flow", "Flow", 0, 0, 1, 0.01, Unit.PERCENT,
+            "Gently ripples and drifts the picture's contents so painted clouds roll and auroras sway."), IMG_ON);
+    public static final Slider IMAGE_FLOW_SPEED = when(slider("image_flow_speed", "Flow speed", 0.35, 0, 1, 0.01, Unit.PERCENT,
+            "How fast the flowing motion is."), p -> !IMAGE.get(p).isEmpty() && IMAGE_FLOW.v(p) > 0);
+    public static final Slider IMAGE_SHIMMER = when(slider("image_shimmer", "Shimmer", 0, 0, 1, 0.01, Unit.PERCENT,
+            "Waves of brightness rippling through the picture, like a living aurora."), IMG_ON);
+    public static final Slider IMAGE_FPS = when(slider("image_fps", "Animation speed", 8, 0.5, 30, 0.5, Unit.DECIMAL,
+            "Frames per second for animated pictures (GIFs or numbered frames)."), IMG_ON);
+    public static final Toggle IMAGE_FRAME_BLEND = adv(when(toggle("image_frame_blend", "Smooth frame blending", true,
+            "Crossfade between frames of animated pictures so motion looks smooth."), IMG_ON));
+
+    static {
+        section("Look");
+    }
+
     public static final Toggle IMAGE_FOLLOW_SUN = when(toggle("image_follow_sun", "Turn with the sun", false, "Rotate the picture with the sun, like vanilla stars."), IMG_ON);
     public static final Slider IMAGE_HORIZON_FADE = adv(when(slider("image_horizon_fade", "Horizon fade", 0, 0, 1, 0.01, Unit.PERCENT,
             "Fade the picture out toward the horizon so it blends with the gradient."), IMG_ON));

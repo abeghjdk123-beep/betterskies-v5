@@ -58,16 +58,30 @@ public final class ImageLibrary {
         return dir;
     }
 
+    public static final String BUILTIN_CLOUDS = "Drifting clouds (built-in)";
+    public static final String BUILTIN_AURORA = "Aurora veil (built-in)";
+    private static final Pattern FRAME = Pattern.compile("(?i)^(.*?)(\\d+)\\.(png|jpe?g)$");
+
+    public static boolean isBuiltin(String name) {
+        return BUILTIN_CLOUDS.equals(name) || BUILTIN_AURORA.equals(name);
+    }
+
     public List<Entry> scan() {
         List<Entry> out = new ArrayList<>();
+        List<Entry> builtins = List.of(new Entry(BUILTIN_CLOUDS, "Built-in", null), new Entry(BUILTIN_AURORA, "Built-in", null));
         try (Stream<Path> files = Files.list(dir)) {
             for (Path f : files.toList()) {
                 String n = f.getFileName().toString();
                 String lower = n.toLowerCase(Locale.ROOT);
                 if (Files.isDirectory(f)) {
-                    if (countFaces(listDir(f)) == 6) {
+                    List<Path> inside = listDir(f);
+                    if (countFaces(inside) == 6) {
                         out.add(new Entry(n, "Six faces", f));
+                    } else if (countFrames(inside.stream().map(x -> x.getFileName().toString()).toList()) >= 2) {
+                        out.add(new Entry(n, "Animated", f));
                     }
+                } else if (lower.endsWith(".gif")) {
+                    out.add(new Entry(stripExt(n), "Animated", f));
                 } else if (lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg")) {
                     out.add(new Entry(stripExt(n), "Picture", f));
                 } else if (lower.endsWith(".zip")) {
@@ -78,7 +92,9 @@ public final class ImageLibrary {
             // folder missing: no images
         }
         out.sort(Comparator.comparing(e -> e.name().toLowerCase(Locale.ROOT)));
-        return out;
+        List<Entry> all = new ArrayList<>(builtins);
+        all.addAll(out);
+        return all;
     }
 
     public Entry find(String name) {
@@ -98,7 +114,8 @@ public final class ImageLibrary {
             String n = f.getFileName().toString();
             String lower = n.toLowerCase(Locale.ROOT);
             try {
-                if (Files.isDirectory(f) || lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".zip")) {
+                if (Files.isDirectory(f) || lower.endsWith(".png") || lower.endsWith(".jpg") || lower.endsWith(".jpeg") || lower.endsWith(".zip")
+                        || lower.endsWith(".gif")) {
                     Path target = dir.resolve(n);
                     if (Files.isDirectory(f)) {
                         Files.createDirectories(target);
@@ -122,15 +139,91 @@ public final class ImageLibrary {
         }
         String msg = "Imported " + ok + " sky picture" + (ok == 1 ? "" : "s");
         if (!skipped.isEmpty()) {
-            msg += " (skipped " + skipped.size() + ": not .png/.jpg/.zip)";
+            msg += " (skipped " + skipped.size() + ": not .png/.jpg/.gif/.zip)";
         }
         return msg;
     }
 
     // ================================================================== loading
 
+    public static final int MAX_FRAMES = 32;
+
+    /**
+     * Loads an entry as one or more equirectangular frames (animated GIFs and
+     * numbered frame sequences give several; everything else gives one).
+     */
+    public List<Picture> loadFrames(Entry e, int maxWidth) throws IOException {
+        if (e.path() == null) {
+            return List.of(BuiltinPanoramas.generate(e.name(), maxWidth));
+        }
+        String lower = e.path().toString().toLowerCase(Locale.ROOT);
+        if (lower.endsWith(".gif")) {
+            List<BufferedImage> frames = Gif.read(e.path(), MAX_FRAMES);
+            List<Picture> out = new ArrayList<>();
+            for (BufferedImage f : frames) {
+                out.add(fromImage(f, Math.min(maxWidth, 1024)));
+            }
+            return out;
+        }
+        if (Files.isDirectory(e.path()) && countFaces(listDir(e.path())) != 6) {
+            List<Path> files = new ArrayList<>(listDir(e.path()).stream().filter(f -> FRAME.matcher(f.getFileName().toString()).matches()).toList());
+            files.sort(Comparator.comparingLong(f -> frameNumber(f.getFileName().toString())));
+            List<Picture> out = new ArrayList<>();
+            for (Path f : sample(files)) {
+                out.add(fromImage(read(Files.newInputStream(f)), Math.min(maxWidth, 1024)));
+            }
+            return out;
+        }
+        if (lower.endsWith(".zip")) {
+            try (ZipFile zip = new ZipFile(e.path().toFile())) {
+                List<ZipEntry> frames = new ArrayList<>(zip.stream().filter(z -> !z.isDirectory()).filter(z -> {
+                    String leaf = z.getName().substring(z.getName().replace('\\', '/').lastIndexOf('/') + 1);
+                    return FRAME.matcher(leaf).matches() && faceOf(leaf) == null;
+                }).toList());
+                if (frames.size() >= 2) {
+                    frames.sort(Comparator.comparingLong(z -> frameNumber(z.getName().substring(z.getName().replace('\\', '/').lastIndexOf('/') + 1))));
+                    List<Picture> out = new ArrayList<>();
+                    for (ZipEntry z : sample(frames)) {
+                        out.add(fromImage(read(zip.getInputStream(z)), Math.min(maxWidth, 1024)));
+                    }
+                    return out;
+                }
+            }
+        }
+        return List.of(load(e, maxWidth));
+    }
+
+    private static <T> List<T> sample(List<T> all) {
+        if (all.size() <= MAX_FRAMES) {
+            return all;
+        }
+        List<T> out = new ArrayList<>();
+        for (int i = 0; i < MAX_FRAMES; i++) {
+            out.add(all.get(i * all.size() / MAX_FRAMES));
+        }
+        return out;
+    }
+
+    private static long frameNumber(String name) {
+        Matcher m = FRAME.matcher(name);
+        return m.matches() ? Long.parseLong(m.group(2).length() > 18 ? m.group(2).substring(0, 18) : m.group(2)) : 0;
+    }
+
+    private static int countFrames(List<String> names) {
+        int n = 0;
+        for (String s : names) {
+            if (FRAME.matcher(s).matches() && faceOf(s) == null) {
+                n++;
+            }
+        }
+        return n;
+    }
+
     /** Loads an entry as an equirectangular picture at most maxWidth wide. */
     public Picture load(Entry e, int maxWidth) throws IOException {
+        if (e.path() == null) {
+            return BuiltinPanoramas.generate(e.name(), maxWidth);
+        }
         if (Files.isDirectory(e.path())) {
             Map<String, BufferedImage> faces = new HashMap<>();
             for (Path f : listDir(e.path())) {

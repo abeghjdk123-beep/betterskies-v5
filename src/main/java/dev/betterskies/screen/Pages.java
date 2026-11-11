@@ -151,6 +151,7 @@ final class Pages {
             case COLORS -> colors(x, y, w);
             case IMAGES -> images(x, y, w);
             case GRADE -> grade(x, y, w);
+            case ATMOSPHERE -> atmosphere(x, y, w);
             case STUDIO -> studio(x, y, w);
             default -> genericSections(c, x, y, w, st -> true);
         };
@@ -418,6 +419,8 @@ final class Pages {
         Theme t = ui.t;
         Profile p = p();
         boolean cycle = Settings.DAY_CYCLE.on(p);
+        java.util.List<Setting<?>> model = new ArrayList<>(StudioScreen.sections(Category.COLORS).get("Sky model"));
+        y = settingsCard("colors:model", "Sky model", model, x, y, w);
         // gradient card
         y = card("colors:grad", cycle ? "Gradients through the day" : "Sky gradient", x, y, w, top -> {
             int yy = top;
@@ -487,7 +490,7 @@ final class Pages {
             }
             return yy;
         });
-        return genericSections(Category.COLORS, x, y, w, st -> !st.section.equals("Day cycle"));
+        return genericSections(Category.COLORS, x, y, w, st -> !st.section.equals("Day cycle") && !st.section.equals("Sky model"));
     }
 
     // ================================================================== images
@@ -540,7 +543,18 @@ final class Pages {
                     }
                 }
                 ui.textCenter(ui.fit(n.isEmpty() ? "No image" : n, tw - 6), tx + tw / 2, ty + th - 10, sel ? t.text : t.textDim);
-                ui.hit("imgsel:" + i, tx, ty, tw, th, () -> s.edit(() -> Settings.IMAGE.set(p(), n)),
+                ui.hit("imgsel:" + i, tx, ty, tw, th, () -> s.edit(() -> {
+                            Settings.IMAGE.set(p(), n);
+                            if (ImageLibrary.isBuiltin(n) && Settings.IMAGE_FLOW.v(p()) == 0 && Settings.IMAGE_SHIMMER.v(p()) == 0) {
+                                // built-in panoramas are made to move
+                                boolean aurora = ImageLibrary.BUILTIN_AURORA.equals(n);
+                                Settings.IMAGE_FLOW.set(p(), aurora ? 0.6 : 0.45);
+                                Settings.IMAGE_SHIMMER.set(p(), aurora ? 0.6 : 0.0);
+                                Settings.IMAGE_BLEND.set(p(), aurora ? "ADD" : "NORMAL");
+                                Settings.IMAGE_SHOW.set(p(), aurora ? "NIGHT" : "ALWAYS");
+                                Settings.IMAGE_SPIN.set(p(), aurora ? 0.0 : 0.15);
+                            }
+                        }),
                         n.isEmpty() ? "Don't show a sky image" : "Show \"" + n + "\" in the sky");
             }
             yy += ((names.size() + cols - 1) / cols) * (th + gap);
@@ -609,6 +623,30 @@ final class Pages {
             return top + ((BuiltinSkies.LOOKS.size() + perRow - 1) / perRow) * 20;
         });
         return genericSections(Category.GRADE, x, y, w, st -> true);
+    }
+
+    // ================================================================== clouds & weather
+
+    private int atmosphere(int x, int y, int w) {
+        Ui ui = ui();
+        y = card("weather:presets", "Weather presets", x, y, w, top -> {
+            int cw = 92, gap = 4;
+            int perRow = Math.max(1, (w - 16 + gap) / (cw + gap));
+            for (int i = 0; i < BuiltinSkies.WEATHER.size(); i++) {
+                BuiltinSkies.Look look = BuiltinSkies.WEATHER.get(i);
+                int cx = x + 8 + (i % perRow) * (cw + gap), cy = top + (i / perRow) * 20;
+                s.controls.chip(ui, "weather:" + i, look.name(), cx, cy, cw, 16, false,
+                        "Set clouds, haze, fog and rays for " + look.name().toLowerCase(Locale.ROOT)
+                                + " (your sky colors are kept; Ctrl+Z to undo)", () -> s.edit(() -> {
+                            Settings.SKY_CLOUDS.set(p(), true);
+                            look.apply().accept(p());
+                        }));
+            }
+            int rows = (BuiltinSkies.WEATHER.size() + perRow - 1) / perRow;
+            ui.text(ui.fit("Sky-only looks: the world's real weather isn't changed.", w - 16), x + 10, top + rows * 20 + 2, ui.t.textFaint);
+            return top + rows * 20 + 13;
+        });
+        return genericSections(Category.ATMOSPHERE, x, y, w, st -> true);
     }
 
     // ================================================================== studio

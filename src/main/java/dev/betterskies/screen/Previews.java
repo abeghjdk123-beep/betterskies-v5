@@ -39,7 +39,7 @@ final class Previews {
                 SkyState s = new SkyState(p, TICKS[i], 0, 0);
                 for (int y = 0; y < h; y++) {
                     double el = 70 - 85.0 * y / Math.max(1, h - 1);
-                    v[i][y] = grade.apply(SkyColors.colorAtElevation(p, s, el));
+                    v[i][y] = grade.apply(SkyColors.skyColorAt(p, s, el));
                 }
             }
             cache.put(k, v);
@@ -101,8 +101,8 @@ final class Previews {
             for (int i = 0; i < w; i++) {
                 int tick = (int) ((i + 0.5) / w * 24000);
                 SkyState s = new SkyState(p, tick, 0, 0);
-                timeline[i] = grade.apply(SkyColors.colorAtElevation(p, s, Settings.HORIZON_LINE.v(p) + 2));
-                timelineTop[i] = grade.apply(SkyColors.colorAtElevation(p, s, 75));
+                timeline[i] = grade.apply(SkyColors.skyColorAt(p, s, Settings.HORIZON_LINE.v(p) + 2));
+                timelineTop[i] = grade.apply(SkyColors.skyColorAt(p, s, 75));
             }
         }
         for (int i = 0; i < w; i++) {

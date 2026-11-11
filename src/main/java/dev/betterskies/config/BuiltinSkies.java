@@ -260,4 +260,110 @@ public final class BuiltinSkies {
                 CONTRAST.set(p, 0.15);
                 TINT.set(p, 0.35);
             }));
+
+    // ---------------------------------------------------------------- weather presets
+
+    /** Puts every weather-related setting back to normal before a preset changes some. */
+    private static void clearWeather(Profile p) {
+        for (Setting<?> s : List.of(SKY_CLOUDS, SC_TYPE, SC_COVERAGE, SC_DENSITY, SC_SIZE, SC_SOFTNESS, SC_DETAIL, SC_WIND,
+                SC_HEIGHT, SC_LIT, SC_SHADOW, SC_SUNSET, SC_SUN_SHINE, SC_LIGHTNING, HAZE, FOG_TINT, FOG_STRENGTH,
+                STORM_STRENGTH, RAIN_DIM, SUN_RAYS, RAYS_STRENGTH, RAYS_CLOUDS_ONLY, PHYS_HAZE, EXPOSURE, SATURATION, TEMPERATURE)) {
+            s.reset(p);
+        }
+    }
+
+    public static final List<Look> WEATHER = List.of(
+            new Look("Clear", p -> {
+                clearWeather(p);
+                SC_TYPE.set(p, "CIRRUS");
+                SC_COVERAGE.set(p, 0.12);
+                HAZE.set(p, 0.12);
+                PHYS_HAZE.set(p, 0.1);
+                RAYS_STRENGTH.set(p, 0.35);
+            }),
+            new Look("Fair weather", p -> {
+                clearWeather(p);
+                SC_TYPE.set(p, "CUMULUS");
+                SC_COVERAGE.set(p, 0.38);
+                SC_DENSITY.set(p, 0.65);
+            }),
+            new Look("Partly cloudy", p -> {
+                clearWeather(p);
+                SC_TYPE.set(p, "MIXED");
+                SC_COVERAGE.set(p, 0.58);
+                SC_DENSITY.set(p, 0.72);
+                SC_SIZE.set(p, 0.65);
+                RAYS_CLOUDS_ONLY.set(p, true);
+                RAYS_STRENGTH.set(p, 0.75);
+            }),
+            new Look("Overcast", p -> {
+                clearWeather(p);
+                SC_TYPE.set(p, "STRATUS");
+                SC_COVERAGE.set(p, 0.88);
+                SC_DENSITY.set(p, 0.85);
+                SC_SHADOW.set(p, 0x858D9E);
+                SC_LIT.set(p, 0xE4E7EC);
+                HAZE.set(p, 0.55);
+                PHYS_HAZE.set(p, 0.65);
+                SATURATION.set(p, -0.25);
+                SUN_RAYS.set(p, false);
+            }),
+            new Look("Thunderstorm", p -> {
+                clearWeather(p);
+                SC_TYPE.set(p, "STRATUS");
+                SC_COVERAGE.set(p, 0.97);
+                SC_DENSITY.set(p, 1.0);
+                SC_SOFTNESS.set(p, 0.75);
+                SC_LIT.set(p, 0x9EA4AE);
+                SC_SHADOW.set(p, 0x3E434E);
+                SC_WIND.set(p, 0.7);
+                SC_HEIGHT.set(p, 0.25);
+                SC_LIGHTNING.set(p, true);
+                STORM_STRENGTH.set(p, 0.9);
+                RAIN_DIM.set(p, 0.75);
+                FOG_STRENGTH.set(p, 0.85);
+                EXPOSURE.set(p, -0.6);
+                SATURATION.set(p, -0.35);
+                SUN_RAYS.set(p, false);
+            }),
+            new Look("Foggy morning", p -> {
+                clearWeather(p);
+                SC_TYPE.set(p, "STRATUS");
+                SC_COVERAGE.set(p, 0.62);
+                SC_DENSITY.set(p, 0.45);
+                SC_SOFTNESS.set(p, 1.0);
+                SC_HEIGHT.set(p, 0.05);
+                HAZE.set(p, 1.0);
+                PHYS_HAZE.set(p, 0.95);
+                FOG_TINT.set(p, "HORIZON");
+                FOG_STRENGTH.set(p, 0.95);
+                RAYS_STRENGTH.set(p, 0.8);
+                SATURATION.set(p, -0.15);
+            }),
+            new Look("Hazy summer", p -> {
+                clearWeather(p);
+                SC_TYPE.set(p, "SCATTERED");
+                SC_COVERAGE.set(p, 0.35);
+                HAZE.set(p, 0.75);
+                PHYS_HAZE.set(p, 0.75);
+                TEMPERATURE.set(p, 0.15);
+                RAYS_STRENGTH.set(p, 0.7);
+            }),
+            new Look("Golden evening", p -> {
+                clearWeather(p);
+                SC_TYPE.set(p, "MIXED");
+                SC_COVERAGE.set(p, 0.45);
+                SC_SUNSET.set(p, 0xFF9450);
+                SC_SUN_SHINE.set(p, 1.0);
+                RAYS_STRENGTH.set(p, 0.85);
+                TEMPERATURE.set(p, 0.18);
+            }),
+            new Look("Winter night", p -> {
+                clearWeather(p);
+                SC_TYPE.set(p, "CIRRUS");
+                SC_COVERAGE.set(p, 0.15);
+                HAZE.set(p, 0.08);
+                PHYS_HAZE.set(p, 0.05);
+                TEMPERATURE.set(p, -0.3);
+            }));
 }

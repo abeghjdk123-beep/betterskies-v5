@@ -279,13 +279,26 @@ public final class Effects {
 
     // ================================================================== realistic clouds
 
+    /** Where on the cloud layer a sky direction lands, and how much cloud is there. */
+    public interface CloudProbe {
+        /** Cloud opacity (0..1) seen in a direction, including the horizon fade. */
+        double alpha(double[] dir);
+    }
+
+    /** A lightning flash inside the clouds: direction and brightness (0 = none). */
+    public record Flash(double[] dir, double intensity) {
+        public static final Flash NONE = new Flash(new double[]{0, 1, 0}, 0);
+    }
+
     /**
-     * A flat cloud layer above the camera, built as a polar grid so it can fade
-     * smoothly toward the horizon. offA/offB are the scroll offsets (wind + travel)
-     * in layer units along and across the wind; tile is the texture's size in units.
+     * The cloud layer above the camera as a polar grid (fades smoothly toward the
+     * horizon). Fills {@code base} (the clouds) and {@code shine} (sun-colored
+     * glow for the silver-lining texture). offA/offB scroll the texture (wind and
+     * travel); sunTint is the color of sunlight right now.
      */
-    public static void clouds(Geometry g, Profile p, SkyState s, Grade grade, double offA, double offB, boolean low) {
-        double h = 4 + 8 * Settings.SC_HEIGHT.v(p);
+    public static void clouds(Geometry base, Geometry shine, Profile p, SkyState s, Grade grade,
+                              double offA, double offB, boolean low, int sunTint, Flash flash) {
+        double h = cloudHeight(p);
         double maxR = 110;
         double tile = h * 9;
         double windAz = Math.toRadians(Settings.SC_WIND_DIR.v(p));
@@ -293,15 +306,21 @@ public final class Effects {
         double fadeDeg = 2 + Settings.SC_HORIZON_FADE.v(p) * 22;
         double minDeg = Math.toDegrees(Math.atan2(h, maxR));
         double light = SkyMath.lerp(Settings.SC_NIGHT.v(p), 1, 1 - s.darkness) * (1 - 0.35 * s.rain);
-        int sunset = grade.apply(Settings.SC_SUNSET.rgb(p));
+        boolean physical = Settings.SKY_MODEL.is(p, "PHYSICAL");
+        int sunset = physical ? sunTint : grade.apply(Settings.SC_SUNSET.rgb(p));
         double[] sunFlat = SkyMath.norm(new double[]{s.sun[0], 0, s.sun[2]});
-        double sunsetAmount = Math.max(s.dusk, Math.exp(-Math.pow(s.sunHeight / 0.2, 2)) * (s.sunHeight > -0.3 ? 1 : 0));
+        double sunsetAmount = physical ? 1 - SkyMath.smooth(0.0, 0.5, s.sunHeight) * 0.85
+                : Math.max(s.dusk, Math.exp(-Math.pow(s.sunHeight / 0.2, 2)) * (s.sunHeight > -0.3 ? 1 : 0));
+        double shineK = Settings.SC_SUN_SHINE.v(p) * SkyMath.smooth(-0.1, 0.04, s.sunHeight) * (1 - 0.7 * s.rain);
+        double spread = 0.22 + 0.6 * Settings.SC_SUN_SPREAD.v(p);
+        int shineColor = Colors.mixOklab(0xFFFFFF, sunTint, 0.55);
         int rings = low ? 16 : 26, segs = low ? 32 : 56;
         double[][] pos = new double[segs + 1][];
         double[][] uv = new double[segs + 1][];
         int[] col = new int[segs + 1];
+        int[] glow = new int[segs + 1];
         double[][] ppos = null, puv = null;
-        int[] pcol = null;
+        int[] pcol = null, pglow = null;
         for (int i = 0; i <= rings; i++) {
             double t = (double) i / rings;
             double r = maxR * t * t;
@@ -313,25 +332,128 @@ public final class Effects {
                 uv[j] = new double[]{(a - offA) / tile, (b - offB) / tile};
                 double el = Math.toDegrees(Math.atan2(h, Math.max(1e-6, r)));
                 double fade = SkyMath.smooth(minDeg + 0.5, minDeg + fadeDeg, el);
+                double[] dir = SkyMath.norm(pos[j]);
                 double[] flat = r < 1e-6 ? sunFlat : SkyMath.norm(new double[]{x, 0, z});
                 double toward = Math.max(0, SkyMath.dot(flat, sunFlat));
                 double warm = sunsetAmount * (0.3 + 0.7 * toward * toward) * (0.55 + 0.45 * (1 - el / 90));
-                int c = Colors.mixOklab(0xFFFFFF, sunset, Math.min(1, warm * 1.15));
+                int c = Colors.mixOklab(0xFFFFFF, sunset, Math.min(1, warm * (physical ? 0.85 : 1.15)));
+                // forward scattering: clouds near the sun get brighter and take on the sunlight's color
+                double angle = Math.acos(Math.max(-1, Math.min(1, SkyMath.dot(dir, s.sun))));
+                double fs = Math.exp(-Math.pow(angle / spread, 2));
+                c = Colors.mix(c, shineColor, fs * shineK * 0.6);
+                double bright = light * (1 + fs * shineK * 0.25);
                 c = Colors.mix(c, 0x8C9AC0, s.darkness * 0.45);
                 c = Colors.mix(c, 0xA6ABB4, s.rain * 0.5);
-                col[j] = Colors.argbf(fade * Math.min(1, 1 + 0.5 * s.rain), Colors.scale(c, light));
+                if (flash.intensity() > 0) {
+                    double fa = Math.acos(Math.max(-1, Math.min(1, SkyMath.dot(dir, flash.dir()))));
+                    double f = flash.intensity() * Math.exp(-fa * fa / 0.35);
+                    c = Colors.mix(c, 0xEEF2FF, Math.min(1, f));
+                    bright = Math.max(bright, Math.min(1, bright + f * 1.2));
+                }
+                col[j] = Colors.argbf(fade * Math.min(1, 1 + 0.5 * s.rain), Colors.scale(c, Math.min(1, bright)));
+                glow[j] = Colors.argbf(fade * Math.min(1, fs * shineK * 1.1), shineColor);
             }
             if (ppos != null) {
                 for (int j = 0; j < segs; j++) {
-                    g.quad(ppos[j], puv[j][0], puv[j][1], pcol[j],
+                    base.quad(ppos[j], puv[j][0], puv[j][1], pcol[j],
                             ppos[j + 1], puv[j + 1][0], puv[j + 1][1], pcol[j + 1],
                             pos[j + 1], uv[j + 1][0], uv[j + 1][1], col[j + 1],
                             pos[j], uv[j][0], uv[j][1], col[j]);
+                    if (shineK > 0.003 && ((pglow[j] | pglow[j + 1] | glow[j] | glow[j + 1]) >>> 24) > 1) {
+                        shine.quad(ppos[j], puv[j][0], puv[j][1], pglow[j],
+                                ppos[j + 1], puv[j + 1][0], puv[j + 1][1], pglow[j + 1],
+                                pos[j + 1], uv[j + 1][0], uv[j + 1][1], glow[j + 1],
+                                pos[j], uv[j][0], uv[j][1], glow[j]);
+                    }
                 }
             }
             ppos = pos.clone();
             puv = uv.clone();
             pcol = col.clone();
+            pglow = glow.clone();
         }
+    }
+
+    public static double cloudHeight(Profile p) {
+        return 4 + 8 * Settings.SC_HEIGHT.v(p);
+    }
+
+    // ================================================================== sun rays
+
+    /**
+     * Crepuscular rays: beams fanning out from the sun. With realistic clouds, each
+     * beam is as bright as the gap it shines through, so rays appear between clouds.
+     */
+    public static void sunRays(Geometry g, Profile p, SkyState s, double time, CloudProbe clouds, int color, double r) {
+        double sunVis = SkyMath.smooth(-0.06, 0.04, s.sunHeight) * (1 - 0.8 * s.rain);
+        if (sunVis < 0.003) {
+            return;
+        }
+        double strength = Settings.RAYS_STRENGTH.v(p) * sunVis * (0.55 + 0.75 * Math.exp(-Math.pow(s.sunHeight / 0.3, 2)));
+        int count = 10 + (int) Math.round(Settings.RAYS_COUNT.v(p) * 38);
+        double length = Math.toRadians(16 + Settings.RAYS_LENGTH.v(p) * 60);
+        boolean cloudsOnly = Settings.RAYS_CLOUDS_ONLY.on(p);
+        double[] sun = s.sun;
+        double[] t1 = SkyMath.tangent(sun), t2 = SkyMath.cross(sun, t1);
+        double start = Math.toRadians(2.2 * Math.max(0.6, Settings.SUN_SIZE.v(p)));
+        // how cloudy it is right around the sun
+        double presence = 0;
+        if (clouds != null) {
+            int n = 0;
+            for (int k = 0; k < 16; k++) {
+                double th = SkyMath.TAU * k / 16;
+                for (double d : new double[]{0.06, 0.12, 0.2}) {
+                    presence += clouds.alpha(along(sun, t1, t2, th, d));
+                    n++;
+                }
+            }
+            presence /= n;
+        }
+        double cloudFactor = SkyMath.smooth(0.04, 0.35, presence);
+        if (cloudsOnly && cloudFactor < 0.01) {
+            return;
+        }
+        double width = 0.018 + 0.05 * (1 - Settings.RAYS_COUNT.v(p));
+        int segs = 10;
+        for (int k = 0; k < count; k++) {
+            double th = SkyMath.TAU * (k + 0.5 * SkyMath.hash(k, 3)) / count + time * 0.004;
+            double shimmer = 0.55 + 0.45 * Math.sin(time * (0.15 + 0.2 * SkyMath.hash(k, 9)) + SkyMath.hash(k, 4) * 6.28);
+            double intensity;
+            if (clouds != null && presence > 0.02) {
+                double open = 0;
+                for (int q = 1; q <= 5; q++) {
+                    open += 1 - clouds.alpha(along(sun, t1, t2, th, start + q * 0.035));
+                }
+                open /= 5;
+                intensity = Math.pow(open, 1.5) * cloudFactor * 1.4 + (cloudsOnly ? 0 : (1 - cloudFactor) * 0.3 * shimmer);
+            } else {
+                intensity = cloudsOnly ? 0 : 0.3 * shimmer;
+            }
+            intensity *= strength * (0.6 + 0.4 * SkyMath.hash(k, 7));
+            if (intensity < 0.01) {
+                continue;
+            }
+            double len = length * (0.6 + 0.4 * SkyMath.hash(k, 5));
+            double[][] pts = new double[segs][];
+            double[] hw = new double[segs];
+            int[] cols = new int[segs];
+            for (int i = 0; i < segs; i++) {
+                double f = (double) i / (segs - 1);
+                double d = start + (len - start) * f;
+                pts[i] = along(sun, t1, t2, th, d);
+                hw[i] = Math.max(0.002, d * width);
+                double a = intensity * Math.pow(1 - f, 1.6) * SkyMath.smooth(0, 0.12, f);
+                cols[i] = Colors.argbf(Math.min(0.85, a), color);
+            }
+            g.ribbon(pts, hw, cols, r);
+        }
+    }
+
+    private static double[] along(double[] sun, double[] t1, double[] t2, double th, double d) {
+        double c = Math.cos(d), sn = Math.sin(d);
+        double ct = Math.cos(th), st = Math.sin(th);
+        return new double[]{sun[0] * c + (t1[0] * ct + t2[0] * st) * sn,
+                sun[1] * c + (t1[1] * ct + t2[1] * st) * sn,
+                sun[2] * c + (t1[2] * ct + t2[2] * st) * sn};
     }
 }

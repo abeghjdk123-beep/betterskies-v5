@@ -40,11 +40,6 @@ public final class SkyRenderer {
     private static Gpu.Tex spaceTex;
     private static SpaceGen.Result spaceShown;
 
-    private record ImageKey(String name, int maxWidth, double fade, int tint, int grade, long folderStamp) {
-    }
-
-    private static final Async<ImageKey, ImageLibrary.Picture> image = new Async<>("Sky image");
-    private static Gpu.Tex imageTex;
 
     private record SunKey(String style, int color, double glow, int glowColor, double corona) {
     }
@@ -57,10 +52,6 @@ public final class SkyRenderer {
     private static Gpu.Tex sunTex;
     private static Gpu.Tex moonTex;
 
-    private static final Async<CloudGen.Input, CloudGen.Result> clouds = new Async<>("Clouds");
-    private static Gpu.Tex cloudTex;
-    private static double cloudWind;
-    private static long cloudLastNanos;
 
     private static final Geometry fx = new Geometry();
     private static final Geometry fx2 = new Geometry();
@@ -122,8 +113,21 @@ public final class SkyRenderer {
 
         // ---- 1. gradient
         updateGradient(p, s, grade);
-        horizonColor = SkyColors.horizon(p, s, grade);
+        int horizon = SkyColors.horizon(p, s, grade);
         Gpu.draw(sphereAlpha, camera, new Vector4f(1, 1, 1, 1), gradientTex.view(), Gpu.sampler(true));
+        double phys = AtmosphereLayer.draw(sphereAlpha, p, s, grade, camera);
+        if (phys > 0) {
+            float yaw = mc.player != null ? mc.player.getYRot() : 0;
+            // Minecraft yaw 0 = south; our compass 0 = north
+            int toward = AtmosphereLayer.horizonToward(yaw + 180);
+            if (toward >= 0) {
+                horizon = Colors.mix(horizon, toward, phys);
+            }
+        }
+        horizonColor = horizon;
+        PhysicalSky.Params params = PhysicalSky.Params.of(p);
+        int sunTint = Settings.SKY_MODEL.is(p, "PHYSICAL") ? PhysicalSky.sunlight(s.sun, params)
+                : Colors.mixOklab(0xFFF4E0, grade.apply(Settings.SC_SUNSET.rgb(p)), 1 - SkyMath.smooth(0.0, 0.45, s.sunHeight));
 
         // ---- 2. stars and space
         double spaceVis = s.spaceVisibility(p);
@@ -147,10 +151,11 @@ public final class SkyRenderer {
         }
 
         // ---- 3. sky image
-        drawImage(p, s, grade, camera, celestial, time);
+        ImageLayer.draw(sphereAlpha, p, s, grade, camera, celestial, time, imageFolderStamp, R * 0.99);
 
         // ---- 4. sunset glow
-        if (Settings.GLOW_MODE.is(p, "BETTERSKIES")) {
+        // the real atmosphere already makes its own sunset glow
+        if (Settings.GLOW_MODE.is(p, "BETTERSKIES") && phys < 0.5) {
             fx.clear();
             Effects.sunsetGlow(fx, p, s, grade, R * 0.97);
             Gpu.drawOnce(fx, Gpu.alpha(), camera, new Vector4f(1, 1, 1, 1), white.view(), Gpu.sampler(false), "glow");
@@ -197,57 +202,19 @@ public final class SkyRenderer {
             }
         }
 
-        // ---- 9. realistic clouds (in front of everything else in the sky)
+        // ---- 9. realistic clouds (in front of everything else in the sky), then sun rays through them
         if (Settings.SKY_CLOUDS.on(p)) {
-            drawClouds(p, s, grade, camera, low, effects);
+            CloudLayer.draw(p, s, grade, camera, low, effects, sunTint, time);
+        }
+        if (Settings.SUN_RAYS.on(p) && !Settings.SUN_STYLE.is(p, "HIDDEN")) {
+            CloudLayer.drawRays(p, s, camera, white, sunTint, time, R * 0.85);
         }
 
-        status = clouds.busy() ? "Shaping clouds…" : space.busy() ? "Generating stars…" : image.busy() ? "Loading sky image…"
-                : image.error() != null ? "Image problem: " + image.error() : "";
+        status = AtmosphereLayer.busy() ? "Scattering sunlight…" : CloudLayer.busy() ? "Shaping clouds…"
+                : space.busy() ? "Generating stars…" : ImageLayer.busy() ? "Loading sky image…"
+                : ImageLayer.error() != null ? "Image problem: " + ImageLayer.error() : "";
         lastFrameNanos = System.nanoTime() - start;
         return true;
-    }
-
-    private static void drawClouds(Profile p, SkyState s, Grade grade, Matrix4f camera, boolean low, boolean effects) {
-        CloudGen.Input in = CloudGen.Input.of(p);
-        CloudGen.Result res = clouds.get(in, () -> CloudGen.generate(in));
-        if (clouds.takeFresh() && res != null) {
-            if (cloudTex != null && cloudTex.width != res.size()) {
-                cloudTex.close();
-                cloudTex = null;
-            }
-            if (cloudTex == null) {
-                cloudTex = Gpu.texture("clouds", res.argb(), res.size(), res.size());
-            } else {
-                cloudTex.update(res.argb());
-            }
-        }
-        if (cloudTex == null) {
-            return;
-        }
-        double h = 4 + 8 * Settings.SC_HEIGHT.v(p);
-        double tile = h * 9;
-        // wind: accumulate so changing the speed never makes clouds jump
-        long now = System.nanoTime();
-        double dt = cloudLastNanos == 0 ? 0 : Math.min(0.5, (now - cloudLastNanos) / 1e9);
-        cloudLastNanos = now;
-        if (effects) {
-            cloudWind = (cloudWind + dt * Settings.SC_WIND.v(p) * h * 0.06) % tile;
-        }
-        double offA = cloudWind, offB = 0;
-        Minecraft mc = Minecraft.getInstance();
-        if (Settings.SC_PARALLAX.on(p) && mc.gameRenderer != null && mc.gameRenderer.getMainCamera() != null) {
-            var cam = mc.gameRenderer.getMainCamera().position();
-            double k = h / 700.0;
-            double az = Math.toRadians(Settings.SC_WIND_DIR.v(p));
-            double dx = Math.sin(az), dz = -Math.cos(az);
-            double a = cam.x * dx + cam.z * dz, b = -cam.x * dz + cam.z * dx;
-            offA -= (a * k) % tile;
-            offB -= (b * k) % tile;
-        }
-        fx.clear();
-        Effects.clouds(fx, p, s, grade, offA, offB, low);
-        Gpu.drawOnce(fx, Gpu.alpha(), camera, new Vector4f(1, 1, 1, 1), cloudTex.view(), Gpu.tiled(), "clouds");
     }
 
     /** Space input compared through {@link SpaceGen.Input#same}. */
@@ -297,89 +264,6 @@ public final class SkyRenderer {
             px[y * 2 + 1] = strip[y];
         }
         gradientTex.update(px);
-    }
-
-    private static void drawImage(Profile p, SkyState s, Grade grade, Matrix4f camera, Matrix4f celestial, double time) {
-        String name = Settings.IMAGE.get(p);
-        if (name.isEmpty()) {
-            if (imageTex != null) {
-                imageTex.close();
-                imageTex = null;
-                image.clear();
-            }
-            return;
-        }
-        int maxW = Settings.QUALITY.is(p, "LOW") ? 2048 : 4096;
-        boolean gr = Settings.GRADE_IMAGES.on(p);
-        double fade = Settings.IMAGE_HORIZON_FADE.v(p);
-        int tint = Settings.IMAGE_TINT.rgb(p);
-        Grade g = gr ? grade : Grade.NONE;
-        ImageKey key = new ImageKey(name, maxW, fade, tint, gr ? Objects.hash(grade.apply(0x808080), grade.apply(0xFF4020),
-                grade.apply(0x2040FF), grade.apply(0x202020), grade.apply(0xE0E0E0)) : 0, imageFolderStamp);
-        ImageLibrary lib = BetterSkies.images();
-        ImageLibrary.Picture pic = image.get(key, () -> {
-            ImageLibrary.Entry e = lib.find(name);
-            if (e == null) {
-                throw new IllegalStateException("\"" + name + "\" is no longer in the images folder");
-            }
-            try {
-                return process(lib.load(e, maxW), fade, tint, g);
-            } catch (java.io.IOException ex) {
-                throw new IllegalStateException(ex.getMessage(), ex);
-            }
-        });
-        if (image.takeFresh()) {
-            if (imageTex != null) {
-                imageTex.close();
-                imageTex = null;
-            }
-            if (pic != null) {
-                imageTex = Gpu.texture("image", pic.argb(), pic.width(), pic.height());
-            }
-        }
-        if (imageTex == null) {
-            return;
-        }
-        double vis = switch (Settings.IMAGE_SHOW.get(p)) {
-            case "NIGHT" -> s.darkness;
-            case "DAY" -> 1 - s.darkness;
-            default -> 1;
-        } * Settings.IMAGE_OPACITY.v(p);
-        if (vis < 0.003) {
-            return;
-        }
-        Matrix4f m = new Matrix4f(Settings.IMAGE_FOLLOW_SUN.on(p) ? celestial : camera);
-        double spin = Settings.IMAGE_SPIN.v(p) * time * 0.02;
-        m.rotateY((float) (-Math.toRadians(Settings.IMAGE_ROTATION.v(p)) - spin % SkyMath.TAU));
-        float f = (float) vis;
-        if (Settings.IMAGE_BLEND.is(p, "ADD")) {
-            Gpu.draw(sphereAdd, m, new Vector4f(f, f, f, 1), imageTex.view(), Gpu.sampler(true));
-        } else {
-            Gpu.draw(sphereAlpha, m, new Vector4f(1, 1, 1, f), imageTex.view(), Gpu.sampler(true));
-        }
-    }
-
-    private static ImageLibrary.Picture process(ImageLibrary.Picture pic, double fade, int tint, Grade grade) {
-        int w = pic.width(), h = pic.height();
-        int[] out = new int[w * h];
-        boolean tinted = (tint & 0xFFFFFF) != 0xFFFFFF;
-        for (int y = 0; y < h; y++) {
-            double el = (0.5 - (y + 0.5) / h) * 180;
-            double a = fade <= 0 ? 1 : SkyMath.smooth(-2, 4 + fade * 40, el);
-            for (int x = 0; x < w; x++) {
-                int c = pic.argb()[y * w + x];
-                int rgb = c & 0xFFFFFF;
-                if (tinted) {
-                    rgb = Colors.rgb(Colors.r(rgb) * Colors.r(tint) / 255, Colors.g(rgb) * Colors.g(tint) / 255, Colors.b(rgb) * Colors.b(tint) / 255);
-                }
-                if (!grade.neutral()) {
-                    rgb = grade.apply(rgb);
-                }
-                int alpha = (int) Math.round(((c >>> 24) & 255) * a);
-                out[y * w + x] = (alpha << 24) | rgb;
-            }
-        }
-        return new ImageLibrary.Picture(w, h, out);
     }
 
     private static void drawSun(Profile p, Grade grade, Matrix4f celestial, double vis) {
@@ -454,7 +338,7 @@ public final class SkyRenderer {
     /** Frees GPU resources (e.g. when leaving a world isn't needed; kept for resource reloads). */
     public static void release() {
         List<AutoCloseable> all = new java.util.ArrayList<>();
-        java.util.Collections.addAll(all, sphereAlpha, sphereAdd, white, dot, glow, ring, gradientTex, spaceTex, imageTex, sunTex, moonTex, cloudTex);
+        java.util.Collections.addAll(all, sphereAlpha, sphereAdd, white, dot, glow, ring, gradientTex, spaceTex, sunTex, moonTex);
         for (AutoCloseable c : all) {
             if (c != null) {
                 try {
@@ -465,11 +349,12 @@ public final class SkyRenderer {
             }
         }
         sphereAlpha = sphereAdd = null;
-        white = dot = glow = ring = gradientTex = spaceTex = imageTex = sunTex = moonTex = cloudTex = null;
-        clouds.clear();
+        white = dot = glow = ring = gradientTex = spaceTex = sunTex = moonTex = null;
+        CloudLayer.release();
+        AtmosphereLayer.release();
+        ImageLayer.forget();
         spaceShown = null;
         space.clear();
-        image.clear();
         sun.clear();
         moon.clear();
         stripRevision = -1;

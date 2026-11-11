@@ -46,7 +46,8 @@ public final class CloudGen {
         }
     }
 
-    public record Result(int size, int[] argb) {
+    /** argb = the clouds; edge = white with alpha on thin, sun-catching edges (for the silver-lining pass). */
+    public record Result(int size, int[] argb, int[] edge) {
     }
 
     // ================================================================== tiling noise
@@ -139,6 +140,7 @@ public final class CloudGen {
     public static Result generate(Input in) {
         int n = in.size;
         int[] out = new int[n * n];
+        int[] edge = new int[n * n];
         TileNoise a = new TileNoise(in.seed * 92821L + 3);
         TileNoise b = new TileNoise(in.seed * 31337L + 11);
         TileNoise c = new TileNoise(in.seed * 7777L + 29);
@@ -193,9 +195,12 @@ public final class CloudGen {
                 }
                 int rgb = Colors.mixOklab(lit, shadow, thick * thick * (0.2 + 0.4 * in.density));
                 out[y * n + x] = Colors.argbf(Math.min(1, alpha), rgb);
+                // thin parts glow most when backlit by the sun
+                double rim = d * Math.pow(1 - thick, 1.3) * (1.1 - 0.4 * in.density);
+                edge[y * n + x] = Colors.argbf(Math.min(1, rim), 0xFFFFFF);
             }
         });
-        return new Result(n, out);
+        return new Result(n, out, edge);
     }
 
     private static double cumulus(TileNoise a, TileNoise b, double u, double v, int cells, int octaves, double gain) {
