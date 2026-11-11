@@ -21,3 +21,11 @@ for f in position_tex_color.vsh position_tex_color.fsh position_tex.vsh position
 done
 echo "=================== PIPELINES"
 cd "$GITHUB_WORKSPACE" && ./gradlew -q dumpPipelines 2>&1 | head -200
+
+echo "=================== GAMETEST"
+GT=$(find ~/.gradle -name 'fabric-client-gametest-api-v1*.jar' | grep -v sources | head -n1)
+echo "GT=$GT"
+unzip -l "$GT" | grep '\.class' | awk '{print $4}' | grep -v '/impl/\|mixin' | head -60
+for c in $(unzip -l "$GT" | grep '\.class' | awk '{print $4}' | grep 'api/client/gametest' | grep -v '\$' | sed 's/\.class$//; s#/#.#g'); do
+  echo "--- $c"; javap -cp "$GT:$JAR" "$c" 2>&1 | grep -v '^Compiled'
+done

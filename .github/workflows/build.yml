@@ -21,7 +21,7 @@ jobs:
         run: |
           chmod +x ./gradlew
           set -o pipefail
-          ./gradlew build --stacktrace 2>&1 | tee build.log
+          ./gradlew remapJar --stacktrace 2>&1 | tee build.log
       - name: Dump API signatures (dev aid)
         if: always() && hashFiles('tools/api-classes.txt') != ''
         run: bash tools/dump-api.sh > api-dump.txt 2>&1 || true
