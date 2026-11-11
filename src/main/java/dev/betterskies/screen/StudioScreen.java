@@ -86,6 +86,29 @@ public final class StudioScreen extends Screen {
         };
     }
 
+    /** Opens the Studio on a given page (used by tests and other mods). */
+    public static StudioScreen openAt(Category c) {
+        StudioScreen s = new StudioScreen(null);
+        s.page = c;
+        return s;
+    }
+
+    /** Opens the Studio with a search already typed (used by tests). */
+    public static StudioScreen openSearch(String query) {
+        StudioScreen s = new StudioScreen(null);
+        s.search.set(query);
+        return s;
+    }
+
+    /** Opens the Studio with the color picker showing (used by tests). */
+    public static StudioScreen openColorPickerDemo() {
+        StudioScreen s = openAt(Category.AURORA);
+        s.pendingDemoPicker = true;
+        return s;
+    }
+
+    private boolean pendingDemoPicker;
+
     // ================================================================== editing API
 
     Profile p() {
@@ -293,6 +316,11 @@ public final class StudioScreen extends Screen {
             ui.popupY2 = popup.y + popup.h;
         }
         ui.begin(g, font, mouseX, mouseY, t, Settings.ANIMATIONS.on(p));
+        if (pendingDemoPicker) {
+            pendingDemoPicker = false;
+            pickColor(Settings.AURORA_COLOR.label, Settings.AURORA_COLOR.rgb(p), width / 2, 60, v -> {
+            });
+        }
 
         float open = ui.anim("open", 1, 9);
         if (open < 0.02f) {
@@ -597,7 +625,13 @@ public final class StudioScreen extends Screen {
                 drag = h.drag();
                 dragId = h.id();
             }
+            Popups.Popup before = popup;
             h.click().click(e.button(), mx, my, doubleClick);
+            if (popup != null && popup != before) {
+                // the click opened a popup: it owns the edit from here, so no drag
+                drag = null;
+                dragId = null;
+            }
             return true;
         }
         return true;

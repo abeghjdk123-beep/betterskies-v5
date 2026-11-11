@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "id": "betterskies-gametest",
+  "version": "1.0.0",
+  "name": "BetterSkies smoke test",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-client-gametest": ["dev.betterskies.gametest.StudioGameTest"]
+  },
+  "depends": {
+    "betterskies": "*"
+  }
+}
