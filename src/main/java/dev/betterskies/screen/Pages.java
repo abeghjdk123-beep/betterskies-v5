@@ -590,8 +590,12 @@ final class Pages {
         if (job.isDone()) {
             int[] px = job.getNow(null);
             if (px != null) {
+                // see-through pictures are shown over a sky so their shapes read correctly
+                int bg = name.toLowerCase(Locale.ROOT).contains("aurora") ? 0x0B1222 : 0x5D9BE0;
                 for (int i = 0; i < px.length; i++) {
-                    px[i] |= 0xFF000000;
+                    int c = px[i];
+                    double a = ((c >>> 24) & 255) / 255.0;
+                    px[i] = 0xFF000000 | Colors.mix(bg, c & 0xFFFFFF, a);
                 }
                 thumbs.put(name, Gpu.texture("thumb " + name, px, 128, 64));
             }

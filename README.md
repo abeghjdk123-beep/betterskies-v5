@@ -44,6 +44,11 @@ Press **F12** in game (rebindable under Controls → BetterSkies), or use Mod Me
 - Sky images: 2:1 panoramas, OptiFine-style 3:2 cube sheets, six-face folders or `.zip` files, all converted to one panorama. Normal or glow blending, rotation, spin, turn-with-sun, horizon fade, tint, day/night visibility.
 - **Color grade** that only touches the sky: exposure, contrast, highlights, shadows, gamma, saturation, vibrance, temperature, tint, hue shift — plus nine one-click looks.
 - **Realistic clouds**: soft, natural clouds painted by BetterSkies — puffy cumulus, wispy cirrus, mixed, layered stratus or scattered puffs. Set coverage, thickness, cloud size, edge softness, detail, a random pattern seed, wind speed and direction, altitude, horizon fade, and sunlit / shadow / sunset colors. They drift with the wind, slide past as you travel, glow warm at sunrise and sunset, dim at night and darken in rain. Minecraft's blocky clouds are hidden while they're on (optional).
+- **Real atmosphere** sky mode (Sky Colors → Sky model): physically based light scattering through a spherical atmosphere with air (Rayleigh), haze (Mie) and ozone, including the planet's shadow. You get true blue skies, white horizon haze, the glow around the sun, deep orange-red sunsets, blue-purple twilight, Earth's shadow and the pink Belt of Venus at dusk, with automatic eye adaptation. Tune haze, air thickness, ozone, sun glow, brightness, viewing altitude, ground color and tint, mix in your own gradients, and optionally fade into your Night gradient after dark. Sunlight takes its real color (white at noon, orange at sunset) and lights the clouds.
+- **Sunlight through clouds**: clouds near the sun light up with glowing silver edges and sun-colored bodies.
+- **Sun rays**: beams fanning out from the sun that follow the real gaps in the clouds; strength, length, number, color, and an "only through clouds" option.
+- **Weather presets**: Clear, Fair weather, Partly cloudy, Overcast, Thunderstorm (with lightning flickering inside the clouds), Foggy morning, Hazy summer, Golden evening and Winter night, in one click.
+- **Moving panoramas**: any sky picture can Drift (turn), Flow (its contents gently roll and ripple) and Shimmer (waves of brightness, like a living aurora). Animated GIFs and numbered frame sequences play with smooth crossfades. Two built-in animated panoramas are included: Drifting clouds and Aurora veil.
 - Fog and blocky clouds can match your sky: fog takes the horizon color (keeping vanilla brightness in caves; skipped underwater and in lava), clouds can be tinted, faded and raised or lowered by blocks.
 
 **The Studio (editor)**
@@ -69,6 +74,7 @@ Put pictures in `config/betterskies/images/` (or drop them on the Studio window)
 
 - `name.png` / `name.jpg` — a 2:1 equirectangular panorama
 - `name.png` with a 3:2 shape — a cube sheet (top row: bottom, top, south; bottom row: west, north, east)
+- `name.gif`, or a folder / `.zip` of numbered frames (`frame_001.png`, `frame_002.png`, …): an animated sky (up to 32 frames, crossfaded)
 - a folder or `.zip` with six faces named `…north`, `…south`, `…east`, `…west`, `…top`/`…up`, `…bottom`/`…down` (or `px nx py ny pz nz`)
 
 Use **Glow (add)** blending for pictures of stars or nebulae on black, so they light up your gradient instead of covering it.
