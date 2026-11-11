@@ -51,3 +51,6 @@ net.minecraft.client.gui.components.EditBox
 com.mojang.blaze3d.vertex.VertexFormat
 com.mojang.blaze3d.systems.RenderPass
 net.minecraft.client.renderer.DynamicUniforms
+com.mojang.blaze3d.platform.cursor.CursorType
+com.mojang.blaze3d.platform.cursor.CursorTypes
+net.minecraft.client.renderer.RenderPipelines

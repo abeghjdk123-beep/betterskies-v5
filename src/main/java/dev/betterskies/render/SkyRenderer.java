@@ -36,7 +36,7 @@ public final class SkyRenderer {
     private static long stripRevision = -1;
     private static long stripAt;
 
-    private static final Async<SpaceGen.Input, SpaceGen.Result> space = new Async<>("Star field");
+    private static final Async<KeyedInput, SpaceGen.Result> space = new Async<>("Star field");
     private static Gpu.Tex spaceTex;
     private static SpaceGen.Result spaceShown;
 
