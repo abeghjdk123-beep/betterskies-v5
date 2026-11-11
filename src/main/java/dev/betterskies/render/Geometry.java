@@ -77,6 +77,13 @@ public final class Geometry {
         double ax = p1[0] - p0[0], ay = p1[1] - p0[1], az = p1[2] - p0[2];
         double bx = p2[0] - p0[0], by = p2[1] - p0[1], bz = p2[2] - p0[2];
         double nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx;
+        if (nx * nx + ny * ny + nz * nz < 1e-12) {
+            // first edge collapsed (e.g. the centre of a disc): use the other triangle
+            double cx = p3[0] - p0[0], cy = p3[1] - p0[1], cz = p3[2] - p0[2];
+            nx = by * cz - bz * cy;
+            ny = bz * cx - bx * cz;
+            nz = bx * cy - by * cx;
+        }
         double dot = nx * (p0[0] + p2[0]) + ny * (p0[1] + p2[1]) + nz * (p0[2] + p2[2]);
         if (dot <= 0) {
             vertex(p0, u0, v0, c0);

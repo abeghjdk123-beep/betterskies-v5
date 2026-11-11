@@ -18,7 +18,7 @@ public abstract class CloudRendererMixin {
     @Inject(method = "render", at = @At("HEAD"), cancellable = true)
     private void betterskies$hide(CallbackInfo ci) {
         Profile p = BetterSkies.profile();
-        if (Settings.ENABLED.on(p) && !Settings.CLOUDS.on(p)) {
+        if (Settings.ENABLED.on(p) && (!Settings.CLOUDS.on(p) || (Settings.SKY_CLOUDS.on(p) && Settings.SC_HIDE_VANILLA.on(p)))) {
             ci.cancel();
         }
     }

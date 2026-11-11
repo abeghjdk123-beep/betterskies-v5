@@ -57,6 +57,11 @@ public final class SkyRenderer {
     private static Gpu.Tex sunTex;
     private static Gpu.Tex moonTex;
 
+    private static final Async<CloudGen.Input, CloudGen.Result> clouds = new Async<>("Clouds");
+    private static Gpu.Tex cloudTex;
+    private static double cloudWind;
+    private static long cloudLastNanos;
+
     private static final Geometry fx = new Geometry();
     private static final Geometry fx2 = new Geometry();
 
@@ -191,10 +196,57 @@ public final class SkyRenderer {
             }
         }
 
-        status = space.busy() ? "Generating stars…" : image.busy() ? "Loading sky image…"
+        // ---- 9. realistic clouds (in front of everything else in the sky)
+        if (Settings.SKY_CLOUDS.on(p)) {
+            drawClouds(p, s, grade, camera, low, effects);
+        }
+
+        status = clouds.busy() ? "Shaping clouds…" : space.busy() ? "Generating stars…" : image.busy() ? "Loading sky image…"
                 : image.error() != null ? "Image problem: " + image.error() : "";
         lastFrameNanos = System.nanoTime() - start;
         return true;
+    }
+
+    private static void drawClouds(Profile p, SkyState s, Grade grade, Matrix4f camera, boolean low, boolean effects) {
+        CloudGen.Input in = CloudGen.Input.of(p);
+        CloudGen.Result res = clouds.get(in, () -> CloudGen.generate(in));
+        if (clouds.takeFresh() && res != null) {
+            if (cloudTex != null && cloudTex.width != res.size()) {
+                cloudTex.close();
+                cloudTex = null;
+            }
+            if (cloudTex == null) {
+                cloudTex = Gpu.texture("clouds", res.argb(), res.size(), res.size());
+            } else {
+                cloudTex.update(res.argb());
+            }
+        }
+        if (cloudTex == null) {
+            return;
+        }
+        double h = 4 + 8 * Settings.SC_HEIGHT.v(p);
+        double tile = h * 9;
+        // wind: accumulate so changing the speed never makes clouds jump
+        long now = System.nanoTime();
+        double dt = cloudLastNanos == 0 ? 0 : Math.min(0.5, (now - cloudLastNanos) / 1e9);
+        cloudLastNanos = now;
+        if (effects) {
+            cloudWind = (cloudWind + dt * Settings.SC_WIND.v(p) * h * 0.06) % tile;
+        }
+        double offA = cloudWind, offB = 0;
+        Minecraft mc = Minecraft.getInstance();
+        if (Settings.SC_PARALLAX.on(p) && mc.gameRenderer != null && mc.gameRenderer.getMainCamera() != null) {
+            var cam = mc.gameRenderer.getMainCamera().position();
+            double k = h / 700.0;
+            double az = Math.toRadians(Settings.SC_WIND_DIR.v(p));
+            double dx = Math.sin(az), dz = -Math.cos(az);
+            double a = cam.x * dx + cam.z * dz, b = -cam.x * dz + cam.z * dx;
+            offA -= (a * k) % tile;
+            offB -= (b * k) % tile;
+        }
+        fx.clear();
+        Effects.clouds(fx, p, s, grade, offA, offB, low);
+        Gpu.drawOnce(fx, Gpu.alpha(), camera, new Vector4f(1, 1, 1, 1), cloudTex.view(), Gpu.tiled(), "clouds");
     }
 
     /** Space input compared through {@link SpaceGen.Input#same}. */
@@ -401,7 +453,7 @@ public final class SkyRenderer {
     /** Frees GPU resources (e.g. when leaving a world isn't needed; kept for resource reloads). */
     public static void release() {
         List<AutoCloseable> all = new java.util.ArrayList<>();
-        java.util.Collections.addAll(all, sphereAlpha, sphereAdd, white, dot, glow, ring, gradientTex, spaceTex, imageTex, sunTex, moonTex);
+        java.util.Collections.addAll(all, sphereAlpha, sphereAdd, white, dot, glow, ring, gradientTex, spaceTex, imageTex, sunTex, moonTex, cloudTex);
         for (AutoCloseable c : all) {
             if (c != null) {
                 try {
@@ -412,7 +464,8 @@ public final class SkyRenderer {
             }
         }
         sphereAlpha = sphereAdd = null;
-        white = dot = glow = ring = gradientTex = spaceTex = imageTex = sunTex = moonTex = null;
+        white = dot = glow = ring = gradientTex = spaceTex = imageTex = sunTex = moonTex = cloudTex = null;
+        clouds.clear();
         spaceShown = null;
         space.clear();
         image.clear();

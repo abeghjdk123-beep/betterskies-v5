@@ -276,4 +276,62 @@ public final class Effects {
         heads.billboard(headDir, r, 0.022, 0, Colors.argbf(Math.min(1, a), headC));
         heads.billboard(headDir, r, 0.006, 0, Colors.argbf(Math.min(1, a * 1.3), 0xFFFFFF));
     }
+
+    // ================================================================== realistic clouds
+
+    /**
+     * A flat cloud layer above the camera, built as a polar grid so it can fade
+     * smoothly toward the horizon. offA/offB are the scroll offsets (wind + travel)
+     * in layer units along and across the wind; tile is the texture's size in units.
+     */
+    public static void clouds(Geometry g, Profile p, SkyState s, Grade grade, double offA, double offB, boolean low) {
+        double h = 4 + 8 * Settings.SC_HEIGHT.v(p);
+        double maxR = 110;
+        double tile = h * 9;
+        double windAz = Math.toRadians(Settings.SC_WIND_DIR.v(p));
+        double dx = Math.sin(windAz), dz = -Math.cos(windAz);
+        double fadeDeg = 2 + Settings.SC_HORIZON_FADE.v(p) * 22;
+        double minDeg = Math.toDegrees(Math.atan2(h, maxR));
+        double light = SkyMath.lerp(Settings.SC_NIGHT.v(p), 1, 1 - s.darkness) * (1 - 0.35 * s.rain);
+        int sunset = grade.apply(Settings.SC_SUNSET.rgb(p));
+        double[] sunFlat = SkyMath.norm(new double[]{s.sun[0], 0, s.sun[2]});
+        double sunsetAmount = Math.max(s.dusk, Math.exp(-Math.pow(s.sunHeight / 0.2, 2)) * (s.sunHeight > -0.3 ? 1 : 0));
+        int rings = low ? 16 : 26, segs = low ? 32 : 56;
+        double[][] pos = new double[segs + 1][];
+        double[][] uv = new double[segs + 1][];
+        int[] col = new int[segs + 1];
+        double[][] ppos = null, puv = null;
+        int[] pcol = null;
+        for (int i = 0; i <= rings; i++) {
+            double t = (double) i / rings;
+            double r = maxR * t * t;
+            for (int j = 0; j <= segs; j++) {
+                double ang = SkyMath.TAU * j / segs;
+                double x = Math.sin(ang) * r, z = -Math.cos(ang) * r;
+                pos[j] = new double[]{x, h, z};
+                double a = x * dx + z * dz, b = -x * dz + z * dx;
+                uv[j] = new double[]{(a - offA) / tile, (b - offB) / tile};
+                double el = Math.toDegrees(Math.atan2(h, Math.max(1e-6, r)));
+                double fade = SkyMath.smooth(minDeg + 0.5, minDeg + fadeDeg, el);
+                double[] flat = r < 1e-6 ? sunFlat : SkyMath.norm(new double[]{x, 0, z});
+                double toward = Math.max(0, SkyMath.dot(flat, sunFlat));
+                double warm = sunsetAmount * (0.3 + 0.7 * toward * toward) * (0.55 + 0.45 * (1 - el / 90));
+                int c = Colors.mixOklab(0xFFFFFF, sunset, Math.min(1, warm * 0.9));
+                c = Colors.mix(c, 0x8C9AC0, s.darkness * 0.45);
+                c = Colors.mix(c, 0xA6ABB4, s.rain * 0.5);
+                col[j] = Colors.argbf(fade * Math.min(1, 1 + 0.5 * s.rain), Colors.scale(c, light));
+            }
+            if (ppos != null) {
+                for (int j = 0; j < segs; j++) {
+                    g.quad(ppos[j], puv[j][0], puv[j][1], pcol[j],
+                            ppos[j + 1], puv[j + 1][0], puv[j + 1][1], pcol[j + 1],
+                            pos[j + 1], uv[j + 1][0], uv[j + 1][1], col[j + 1],
+                            pos[j], uv[j][0], uv[j][1], col[j]);
+                }
+            }
+            ppos = pos.clone();
+            puv = uv.clone();
+            pcol = col.clone();
+        }
+    }
 }

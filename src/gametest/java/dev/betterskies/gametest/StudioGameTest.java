@@ -70,6 +70,29 @@ public final class StudioGameTest implements FabricClientGameTest {
             ctx.waitTicks(20);
             shot(ctx, "21-sky-north-aurora");
 
+            // each realistic cloud type at midday, then puffy clouds at sunset
+            sp.getServer().runCommand("time set 5000");
+            for (String type : new String[]{"CUMULUS", "CIRRUS", "MIXED", "STRATUS", "SCATTERED"}) {
+                ctx.runOnClient(mc -> {
+                    Settings.SC_TYPE.set(BetterSkies.profile(), type);
+                    BetterSkies.changed();
+                });
+                look(ctx, -22f, 0f);
+                ctx.waitTicks(60);
+                shot(ctx, "25-clouds-" + type.toLowerCase());
+            }
+            ctx.runOnClient(mc -> {
+                Settings.SC_TYPE.set(BetterSkies.profile(), "CUMULUS");
+                BetterSkies.changed();
+            });
+            sp.getServer().runCommand("time set 12300");
+            look(ctx, -10f, 90f);
+            ctx.waitTicks(60);
+            shot(ctx, "26-clouds-sunset");
+            look(ctx, -75f, 90f);
+            ctx.waitTicks(20);
+            shot(ctx, "27-clouds-overhead");
+
             // a few built-in looks
             for (String sky : new String[]{"Synthwave", "Blood Moon", "Boreal Night"}) {
                 ctx.runOnClient(mc -> {
@@ -105,6 +128,9 @@ public final class StudioGameTest implements FabricClientGameTest {
             ctx.setScreen(() -> StudioScreen.openAt(Category.STARS));
             ctx.waitTicks(15);
             shot(ctx, "50-stars-advanced");
+            ctx.setScreen(() -> StudioScreen.openAt(Category.ATMOSPHERE));
+            ctx.waitTicks(15);
+            shot(ctx, "53-clouds-page");
             ctx.setScreen(() -> StudioScreen.openSearch("color"));
             ctx.waitTicks(15);
             shot(ctx, "51-search");

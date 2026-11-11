@@ -284,10 +284,55 @@ public final class Settings {
 
     // ================================================================== clouds & weather
     static {
-        page(Category.ATMOSPHERE, "Clouds");
+        page(Category.ATMOSPHERE, "Sky clouds");
     }
 
-    public static final Toggle CLOUDS = toggle("clouds", "Show clouds", true, "Draw Minecraft's clouds.");
+    public static final Toggle SKY_CLOUDS = toggle("sky_clouds", "Realistic clouds", true,
+            "Soft, natural clouds painted by BetterSkies: choose their type, coverage, wind and colors.");
+    private static final Predicate<Profile> SC_ON = p -> SKY_CLOUDS.on(p);
+    public static final Choice SC_TYPE = when(choice("sc_type", "Cloud type", "CUMULUS", "What kind of clouds fill the sky.",
+            opt("CUMULUS", "Puffy (cumulus)", "Fluffy fair-weather clouds with soft rounded tops."),
+            opt("CIRRUS", "Wispy (cirrus)", "Thin, streaky high clouds stretched by the wind."),
+            opt("MIXED", "Mixed", "Puffy clouds with wispy streaks above them."),
+            opt("STRATUS", "Layered (stratus)", "A soft, wide blanket of cloud, great for gloomy days."),
+            opt("SCATTERED", "Scattered", "Small separate puffs dotted across the sky.")), SC_ON);
+    public static final Slider SC_COVERAGE = when(slider("sc_coverage", "Coverage", 0.45, 0, 1, 0.01, Unit.PERCENT,
+            "How much of the sky is covered: a few wisps (low) to fully overcast (high)."), SC_ON);
+    public static final Slider SC_DENSITY = when(slider("sc_density", "Thickness", 0.6, 0, 1, 0.01, Unit.PERCENT,
+            "Thin and see-through (low) to thick and solid (high)."), SC_ON);
+    public static final Slider SC_SIZE = when(slider("sc_size", "Cloud size", 0.5, 0, 1, 0.01, Unit.PERCENT,
+            "Small patches (low) to huge rolling cloud masses (high)."), SC_ON);
+    public static final Slider SC_SOFTNESS = when(slider("sc_softness", "Edge softness", 0.5, 0, 1, 0.01, Unit.PERCENT,
+            "Crisp, defined edges (low) to soft, misty edges (high)."), SC_ON);
+    public static final Slider SC_DETAIL = adv(when(slider("sc_detail", "Detail", 0.6, 0, 1, 0.01, Unit.PERCENT,
+            "Amount of small wisps and texture inside the clouds."), SC_ON));
+    public static final Slider SC_SEED = when(slider("sc_seed", "Cloud pattern", 7, 1, 999, 1, Unit.INTEGER,
+            "Pick a different random arrangement of clouds."), SC_ON);
+    public static final Slider SC_WIND = when(slider("sc_wind", "Wind speed", 0.25, 0, 1, 0.01, Unit.PERCENT,
+            "How fast the clouds drift across the sky (0 = still)."), SC_ON);
+    public static final Slider SC_WIND_DIR = when(slider("sc_wind_dir", "Wind direction", 60, 0, 359, 1, Unit.DEGREES,
+            "Compass direction the clouds drift toward (0° = north, 90° = east)."), SC_ON);
+    public static final Slider SC_HEIGHT = when(slider("sc_height", "Altitude", 0.5, 0, 1, 0.01, Unit.PERCENT,
+            "Low clouds stretch to the horizon; high clouds sit more overhead."), SC_ON);
+    public static final Slider SC_HORIZON_FADE = adv(when(slider("sc_horizon_fade", "Horizon fade", 0.5, 0, 1, 0.01, Unit.PERCENT,
+            "How early clouds fade out toward the horizon."), SC_ON));
+    public static final Color SC_LIT = when(color("sc_lit", "Sunlit color", 0xFFFFFF, "Color of the bright, sunlit parts."), SC_ON);
+    public static final Color SC_SHADOW = when(color("sc_shadow", "Shadow color", 0x9AA5BE, "Color of the thick, shaded cores."), SC_ON);
+    public static final Color SC_SUNSET = when(color("sc_sunset", "Sunset color", 0xFF9A6E,
+            "Glow the clouds take on at sunrise and sunset (strongest toward the sun)."), SC_ON);
+    public static final Slider SC_NIGHT = adv(when(slider("sc_night", "Night brightness", 0.12, 0, 1, 0.01, Unit.PERCENT,
+            "How visible clouds stay at night (moonlight)."), SC_ON));
+    public static final Toggle SC_PARALLAX = adv(when(toggle("sc_parallax", "Move as you walk", true,
+            "Clouds slowly slide past as you travel, like real distant clouds."), SC_ON));
+    public static final Toggle SC_HIDE_VANILLA = when(toggle("sc_hide_vanilla", "Hide blocky clouds", true,
+            "Hide Minecraft's blocky clouds while realistic clouds are on."), SC_ON);
+
+    static {
+        section("Blocky clouds");
+    }
+
+    public static final Toggle CLOUDS = toggle("clouds", "Show blocky clouds", true,
+            "Draw Minecraft's own blocky clouds (also needs Clouds turned on in Video Settings).");
     public static final Slider CLOUD_OPACITY = when(slider("cloud_opacity", "Opacity", 1, 0, 1, 0.01, Unit.PERCENT, "Cloud transparency."), p -> CLOUDS.on(p));
     public static final Choice CLOUD_TINT = when(choice("cloud_tint", "Cloud color", "SKY", "How clouds are colored.",
             opt("VANILLA", "Vanilla", "Minecraft's own cloud color."),

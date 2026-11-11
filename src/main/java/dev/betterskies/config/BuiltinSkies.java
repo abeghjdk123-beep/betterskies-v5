@@ -75,6 +75,7 @@ public final class BuiltinSkies {
             DUST.set(p, true);
             COMETS.set(p, true);
             HAZE.set(p, 0.1);
+            SKY_CLOUDS.set(p, false);
         });
 
         sky(out, "Golden Hour", "A permanent warm sunset glow over the world.", p -> {
@@ -87,6 +88,8 @@ public final class BuiltinSkies {
             CLOUD_COLOR.set(p, 0xFFD2A8);
             CLOUD_TINT_STRENGTH.set(p, 0.6);
             TEMPERATURE.set(p, 0.2);
+            SC_TYPE.set(p, "MIXED");
+            SC_SUNSET.set(p, 0xFF8A55);
         });
 
         sky(out, "Blood Moon", "An ominous red night with a huge crimson moon.", p -> {
@@ -131,6 +134,9 @@ public final class BuiltinSkies {
             SATURATION.set(p, -0.3);
             METEORS.set(p, false);
             CLOUD_TINT.set(p, "VANILLA");
+            SC_TYPE.set(p, "STRATUS");
+            SC_COVERAGE.set(p, 0.8);
+            SC_SHADOW.set(p, 0x8A92A3);
         });
 
         sky(out, "Alien World", "Teal skies, two-tone stars and a giant violet moon.", p -> {
@@ -171,6 +177,7 @@ public final class BuiltinSkies {
             COMET_RATE.set(p, 0.6);
             DUST.set(p, true);
             STAR_COLORS.set(p, "TINTED");
+            SKY_CLOUDS.set(p, false);
         });
 
         sky(out, "Vanilla+", "Minecraft's look, just smoother: nicer stars and gradients.", p -> {
@@ -179,6 +186,7 @@ public final class BuiltinSkies {
             GRAD_NIGHT.set(p, Gradient.at(0.0, 0x0E1220, 1.0, 0x000000));
             SUN_STYLE.set(p, "VANILLA");
             MOON_STYLE.set(p, "VANILLA");
+            SKY_CLOUDS.set(p, false);
             GLOW_MODE.set(p, "VANILLA");
             MILKY_WAY.set(p, false);
             STAR_COLORS.set(p, "WHITE");

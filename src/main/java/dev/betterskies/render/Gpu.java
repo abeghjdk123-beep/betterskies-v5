@@ -40,6 +40,7 @@ public final class Gpu {
     private static final Matrix4f NO_TEXTURE_MATRIX = new Matrix4f();
     private static GpuSampler clamp;
     private static GpuSampler wrap;
+    private static GpuSampler tile;
 
     public static RenderPipeline alpha() {
         return RenderPipelines.END_SKY;
@@ -57,6 +58,15 @@ public final class Gpu {
                     AddressMode.REPEAT, AddressMode.CLAMP_TO_EDGE, FilterMode.LINEAR, FilterMode.LINEAR, false);
         }
         return wrapU ? wrap : clamp;
+    }
+
+    /** Repeats in both directions (tiling cloud texture). */
+    public static GpuSampler tiled() {
+        if (tile == null) {
+            tile = RenderSystem.getSamplerCache().getSampler(
+                    AddressMode.REPEAT, AddressMode.REPEAT, FilterMode.LINEAR, FilterMode.LINEAR, false);
+        }
+        return tile;
     }
 
     public static Matrix4f camera() {

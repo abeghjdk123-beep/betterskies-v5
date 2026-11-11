@@ -229,7 +229,7 @@ final class Pages {
         });
         // quick switches
         List<Setting.Toggle> quick = List.of(Settings.DAY_CYCLE, Settings.STARS, Settings.MILKY_WAY, Settings.NEBULA,
-                Settings.AURORA, Settings.METEORS, Settings.SHOWERS, Settings.COMETS, Settings.DUST, Settings.CLOUDS,
+                Settings.AURORA, Settings.METEORS, Settings.SHOWERS, Settings.COMETS, Settings.DUST, Settings.SKY_CLOUDS, Settings.CLOUDS,
                 Settings.MOON_HALO, Settings.EFFECTS);
         y = card("home:quick", "Quick switches", x, y, w, top -> {
             int cols = w >= 330 ? 3 : 2;
