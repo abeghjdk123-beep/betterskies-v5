@@ -14,3 +14,10 @@ unzip -o -q "$MJ" -d /tmp/mj
 MAP=$(find /tmp/mj -name '*.tiny' | head -n3)
 echo "MAP=$MAP"
 for m in $MAP; do grep -E 'class_9975|class_9955|class_758\b|class_10799|field_56865|field_56875|field_56878|method_62302|method_62303|method_62304|method_62305|method_62306|method_62310|method_62168|method_62185' "$m" | head -80; done
+
+echo "=================== SHADERS"
+for f in position_tex_color.vsh position_tex_color.fsh position_tex.vsh position_tex.fsh position_color.fsh; do
+  echo "--- $f"; unzip -p "$JAR" "assets/minecraft/shaders/core/$f" 2>&1 | head -60
+done
+echo "=================== PIPELINES"
+cd "$GITHUB_WORKSPACE" && ./gradlew -q dumpPipelines 2>&1 | head -200

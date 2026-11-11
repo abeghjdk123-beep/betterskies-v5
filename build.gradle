@@ -37,7 +37,16 @@ jar {
     // src/main/java/com/terraformersmc holds tiny copies of the Mod Menu API so Mod Menu
     // stays optional and the build never needs its maven. The real classes come from Mod Menu.
     exclude 'com/terraformersmc/**'
+    exclude 'dev/betterskies/devtools/**'
     from("LICENSE") {
         rename { "${it}_${project.base.archivesName.get()}" }
     }
+}
+
+// Dev aid: prints vanilla render pipeline settings (used while developing the renderer).
+tasks.register('dumpPipelines', JavaExec) {
+    dependsOn classes
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'dev.betterskies.devtools.PipelineDump'
+    ignoreExitValue = true
 }
