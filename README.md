@@ -43,7 +43,8 @@ Press **F12** in game (rebindable under Controls → BetterSkies), or use Mod Me
 - **Sky clock**: freeze the sky at any time of day without touching the world's time.
 - Sky images: 2:1 panoramas, OptiFine-style 3:2 cube sheets, six-face folders or `.zip` files, all converted to one panorama. Normal or glow blending, rotation, spin, turn-with-sun, horizon fade, tint, day/night visibility.
 - **Color grade** that only touches the sky: exposure, contrast, highlights, shadows, gamma, saturation, vibrance, temperature, tint, hue shift — plus nine one-click looks.
-- Fog and clouds can match your sky: fog takes the horizon color (keeping vanilla brightness in caves; skipped underwater and in lava), clouds can be tinted, faded and raised or lowered by blocks.
+- **Realistic clouds**: soft, natural clouds painted by BetterSkies — puffy cumulus, wispy cirrus, mixed, layered stratus or scattered puffs. Set coverage, thickness, cloud size, edge softness, detail, a random pattern seed, wind speed and direction, altitude, horizon fade, and sunlit / shadow / sunset colors. They drift with the wind, slide past as you travel, glow warm at sunrise and sunset, dim at night and darken in rain. Minecraft's blocky clouds are hidden while they're on (optional).
+- Fog and blocky clouds can match your sky: fog takes the horizon color (keeping vanilla brightness in caves; skipped underwater and in lava), clouds can be tinted, faded and raised or lowered by blocks.
 
 **The Studio (editor)**
 - A completely custom-drawn interface: sidebar pages, cards, animated switches and sliders, dropdowns, an HSV color picker with recent colors and colors from your sky, toasts, and themes (7 accent colors, adjustable glass opacity).
