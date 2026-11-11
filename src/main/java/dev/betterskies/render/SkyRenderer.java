@@ -97,7 +97,8 @@ public final class SkyRenderer {
         }
         Minecraft mc = Minecraft.getInstance();
         ClientLevel level = mc.level;
-        if (level == null) {
+        if (level == null || mc.player == null || mc.screen instanceof net.minecraft.client.gui.screens.LevelLoadingScreen) {
+            // don't start painting textures while the world is still loading
             return false;
         }
         long start = System.nanoTime();
