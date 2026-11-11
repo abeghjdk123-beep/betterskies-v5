@@ -150,7 +150,7 @@ public final class CloudGen {
         double soft = 0.04 + in.softness * 0.3;
         int lit = in.grade.apply(in.lit), shadow = in.grade.apply(in.shadow);
         String type = in.type;
-        IntStream.range(0, n).parallel().forEach(y -> {
+        dev.betterskies.util.Parallel.rows(n, y -> {
             for (int x = 0; x < n; x++) {
                 double u = (x + 0.5) / n, v = (y + 0.5) / n;
                 double field;

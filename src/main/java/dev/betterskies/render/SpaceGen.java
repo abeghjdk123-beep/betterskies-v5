@@ -81,7 +81,7 @@ public final class SpaceGen {
         // ---- diffuse layers (per pixel, parallel by row)
         boolean diffuse = in.milky || in.nebula || in.dust;
         if (diffuse) {
-            IntStream.range(0, h).parallel().forEach(y -> {
+            dev.betterskies.util.Parallel.rows(h, y -> {
                 double v = (y + 0.5) / h;
                 for (int x = 0; x < w; x++) {
                     double u = (x + 0.5) / w;
