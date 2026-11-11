@@ -493,31 +493,70 @@ public final class StudioScreen extends Screen {
         int rowY = y + 6;
         // time scrubber
         int tx = x + 8;
-        boolean live = BetterSkies.previewTime() < 0;
+        boolean fixed = Settings.CLOCK.is(p, "FIXED");
+        boolean live = !fixed && BetterSkies.previewTime() < 0;
         long worldTime = minecraft != null && minecraft.level != null ? minecraft.level.getDayTime() : 6000;
-        int tick = live ? (int) Math.floorMod(worldTime, 24000L) : BetterSkies.previewTime();
+        int tick = fixed ? (int) Settings.FIXED_TIME.v(p)
+                : live ? (int) Math.floorMod(worldTime, 24000L) : BetterSkies.previewTime();
         boolean night = tick > 12800 && tick < 23200;
         ui.text(night ? "☾" : "☀", tx, rowY + 4, Colors.opaque(night ? 0xB9C8FF : 0xFFD27A));
-        ui.text(Setting.Slider.clock(tick), tx + 10, rowY + 4, t.text);
+        ui.text(Setting.Slider.clock(tick), tx + 10, rowY + 4, fixed ? Colors.opaque(t.accent2) : t.text);
         boolean views = minecraft != null && minecraft.player != null;
-        int lx = tx + 42, lw = Math.max(70, Math.min(170, w - 162 - 46 - (views ? 56 : 0)));
-        ui.round(lx - 1, rowY + 1, lw + 2, 14, 3, 0x60000000);
+        int lx = tx + 42, lw = Math.max(64, Math.min(170, w - 162 - 46 - 34 - (views ? 56 : 0)));
+        ui.round(lx - 1, rowY + 1, lw + 2, 14, 3, fixed ? Colors.opaque(t.accent) : 0x60000000);
         previews.timeline(ui, p, BetterSkies.revision(), lx, rowY + 2, lw, 12);
         int mxp = lx + (int) Math.round(tick / 24000.0 * lw);
         ui.rect(mxp - 1, rowY - 1, 3, 18, 0xFFFFFFFF);
         ui.rect(mxp, rowY, 1, 16, Colors.opaque(t.accent));
         ui.hit("time", lx, rowY, lw, 16, (b, mx, my, d) -> {
-            setPreview(mx, lx, lw);
+            if (fixed) {
+                beginEdit();
+            }
+            setTime(mx, lx, lw, fixed);
         }, new Ui.Drag() {
             @Override
             public void drag(double mx, double my) {
-                setPreview(mx, lx, lw);
+                setTime(mx, lx, lw, fixed);
             }
-        }, "Drag to preview your sky at any time of day (the world's real time isn't changed)");
-        controls.chip(ui, "live", live ? "Live" : "Live ↺", lx + lw + 5, rowY + 1, 40, 14, live,
-                "Show the world's real time again", () -> BetterSkies.setPreviewTime(-1));
+
+            @Override
+            public void release() {
+                if (fixed) {
+                    endEdit();
+                }
+            }
+        }, fixed ? "The sky is frozen at this time: drag to change it (saved)"
+                : "Drag to preview your sky at any time of day. Press Keep to save that time.");
+        int cx = lx + lw + 5;
+        if (fixed) {
+            controls.chip(ui, "unfreeze", "Frozen", cx, rowY + 1, 72, 14, true,
+                    "The sky always shows this time. Click to follow the world's real time again", () -> {
+                        edit(() -> Settings.CLOCK.set(p(), "WORLD"));
+                        BetterSkies.setPreviewTime(-1);
+                        toast("Sky follows the world's time again", ui.t.good);
+                    });
+        } else {
+            controls.chip(ui, "live", "Live", cx, rowY + 1, 34, 14, live,
+                    "Stop previewing and show the world's real time", () -> BetterSkies.setPreviewTime(-1));
+            if (!live) {
+                int keepTick = tick;
+                controls.chip(ui, "keep", "Keep", cx + 38, rowY + 1, 34, 14, false,
+                        "Freeze the sky at " + Setting.Slider.clock(tick) + " (saved; undo with Ctrl+Z)", () -> {
+                            edit(() -> {
+                                Settings.CLOCK.set(p(), "FIXED");
+                                Settings.FIXED_TIME.set(p(), (double) keepTick);
+                            });
+                            BetterSkies.setPreviewTime(-1);
+                            toast("Sky frozen at " + Setting.Slider.clock(keepTick), ui.t.good);
+                        });
+            } else {
+                ui.round(cx + 38, rowY + 1, 34, 14, 7, 0x30FFFFFF);
+                ui.textCenter("Keep", cx + 55, rowY + 4, t.textFaint);
+                ui.helpArea(cx + 38, rowY + 1, 34, 14, "Drag the timeline first, then press Keep to freeze the sky at that time");
+            }
+        }
         // view buttons
-        int vx = lx + lw + 50;
+        int vx = lx + lw + 82;
         if (views && vx + 3 * 17 <= x + w - 112) {
             String[] names = {"VIEW_HORIZON", "VIEW_SKY", "VIEW_UP"};
             String[] tips = {"Look at the horizon", "Look up at the sky", "Look straight up"};
@@ -549,9 +588,15 @@ public final class StudioScreen extends Screen {
         }
     }
 
-    private void setPreview(double mx, int lx, int lw) {
+    private void setTime(double mx, int lx, int lw, boolean fixed) {
         int tick = (int) Math.round(Math.max(0, Math.min(1, (mx - lx) / lw)) * 23999);
-        BetterSkies.setPreviewTime(tick);
+        if (fixed) {
+            Settings.FIXED_TIME.set(p(), (double) tick);
+            BetterSkies.changed();
+            previews.invalidate();
+        } else {
+            BetterSkies.setPreviewTime(tick);
+        }
     }
 
     void previewAt(int tick) {
