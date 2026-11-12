@@ -60,6 +60,11 @@ public final class SkyState {
     /** How much space effects show (darkness, daytime stars, rain). */
     public double spaceVisibility(Profile p) {
         double v = Math.max(darkness, Settings.DAY_STARS.v(p));
+        // stars coming out in the deep blue after sunset
+        double tw = Settings.STAR_TWILIGHT.v(p);
+        if (tw > 0) {
+            v = Math.max(v, Math.min(1, tw * 1.3) * SkyMath.smooth(0.05, -0.09, sunHeight));
+        }
         if (Settings.HIDE_IN_RAIN.on(p)) {
             v *= 1 - rain;
         }

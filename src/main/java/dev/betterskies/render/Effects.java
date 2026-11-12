@@ -374,14 +374,36 @@ public final class Effects {
      * glow for the silver-lining texture). offA/offB scroll the texture (wind and
      * travel); sunTint is the color of sunlight right now.
      */
-    public static void clouds(Geometry base, Geometry shine, Profile p, SkyState s, Grade grade,
-                              double offA, double offB, boolean low, int sunTint, Flash flash) {
+    /** Horizontal distance (blocks of sky space) the cloud layer reaches. */
+    public static double cloudReach(Profile p) {
+        return NEAR_CLOUDS * Math.pow(12, Settings.SC_DISTANCE.v(p));
+    }
+
+    /** Degrees above the lowest cloud over which clouds fade in. */
+    public static double cloudFadeWidth(Profile p) {
+        double d = Settings.SC_DISTANCE.v(p);
+        return (2 + Settings.SC_HORIZON_FADE.v(p) * 22) * Math.pow(1 - d, 1.5) + 0.8;
+    }
+
+    /** Within this distance clouds use the full-detail texture; further out, softer copies (no shimmer). */
+    public static final double NEAR_CLOUDS = 110, MID_CLOUDS = 75, FAR_CLOUDS = 320;
+
+    /**
+     * The realistic cloud layer: a flat sheet at cloud height seen from below,
+     * reaching (optionally) almost to the horizon. Vertices are pulled in onto the sky
+     * sphere so far clouds never pass the far plane; the texture keeps real
+     * perspective, so clouds shrink and crowd together toward the horizon.
+     * Quads go to {@code near}, {@code mid} or {@code far} by distance, to be drawn
+     * with progressively softer textures.
+     */
+    public static void clouds(Geometry near, Geometry mid, Geometry far, Geometry shine, Profile p, SkyState s, Grade grade,
+                              double offA, double offB, boolean low, int sunTint, Flash flash, int horizon) {
         double h = cloudHeight(p);
-        double maxR = 110;
+        double maxR = cloudReach(p);
         double tile = h * 9;
         double windAz = Math.toRadians(Settings.SC_WIND_DIR.v(p));
         double dx = Math.sin(windAz), dz = -Math.cos(windAz);
-        double fadeDeg = 2 + Settings.SC_HORIZON_FADE.v(p) * 22;
+        double fadeDeg = cloudFadeWidth(p);
         double minDeg = Math.toDegrees(Math.atan2(h, maxR));
         double light = SkyMath.lerp(Settings.SC_NIGHT.v(p), 1, 1 - s.darkness) * (1 - 0.35 * s.rain);
         boolean physical = Settings.SKY_MODEL.is(p, "PHYSICAL");
@@ -392,25 +414,42 @@ public final class Effects {
         double shineK = Settings.SC_SUN_SHINE.v(p) * SkyMath.smooth(-0.1, 0.04, s.sunHeight) * (1 - 0.7 * s.rain);
         double spread = 0.22 + 0.6 * Settings.SC_SUN_SPREAD.v(p);
         int shineColor = Colors.mixOklab(0xFFFFFF, sunTint, 0.55);
-        int rings = low ? 16 : 26, segs = low ? 32 : 56;
+        // twilight: the sun is below the horizon but still lights the clouds from underneath
+        double after = Settings.SC_AFTERGLOW.v(p) * SkyMath.smooth(0.07, -0.005, s.sunHeight)
+                * SkyMath.smooth(-0.22, -0.06, s.sunHeight) * (1 - 0.8 * s.rain);
+        int afterBase = grade.apply(0xE6DAF2);
+        int haze = horizon;
+        int nearRings = low ? 16 : 26, segs = low ? 40 : 72;
+        int farRings = maxR > NEAR_CLOUDS * 1.05 ? (low ? 10 : 18) : 0;
+        int rings = nearRings + farRings;
         double[][] pos = new double[segs + 1][];
         double[][] uv = new double[segs + 1][];
         int[] col = new int[segs + 1];
         int[] glow = new int[segs + 1];
         double[][] ppos = null, puv = null;
         int[] pcol = null, pglow = null;
+        double pr = 0;
         for (int i = 0; i <= rings; i++) {
-            double t = (double) i / rings;
-            double r = maxR * t * t;
+            double r;
+            if (i <= nearRings) {
+                double t = (double) i / nearRings;
+                r = Math.min(NEAR_CLOUDS, maxR) * t * t;
+            } else {
+                double t = (double) (i - nearRings) / farRings;
+                r = NEAR_CLOUDS * Math.pow(maxR / NEAR_CLOUDS, t);
+            }
+            double el = Math.toDegrees(Math.atan2(h, Math.max(1e-6, r)));
+            double fade = SkyMath.smooth(minDeg + 0.15, minDeg + fadeDeg, el) * (1 - 0.3 * SkyMath.smooth(150, maxR, r));
+            double distance = SkyMath.smooth(45, Math.max(60, maxR * 0.85), r);
             for (int j = 0; j <= segs; j++) {
                 double ang = SkyMath.TAU * j / segs;
                 double x = Math.sin(ang) * r, z = -Math.cos(ang) * r;
-                pos[j] = new double[]{x, h, z};
                 double a = x * dx + z * dz, b = -x * dz + z * dx;
                 uv[j] = new double[]{(a - offA) / tile, (b - offB) / tile};
-                double el = Math.toDegrees(Math.atan2(h, Math.max(1e-6, r)));
-                double fade = SkyMath.smooth(minDeg + 0.5, minDeg + fadeDeg, el);
-                double[] dir = SkyMath.norm(pos[j]);
+                double[] dir = SkyMath.norm(new double[]{x, h, z});
+                // keep far clouds on the sky sphere (same direction, nearer)
+                double len = Math.sqrt(x * x + h * h + z * z);
+                pos[j] = len > 100 ? SkyMath.scale(dir, 100) : new double[]{x, h, z};
                 double[] flat = r < 1e-6 ? sunFlat : SkyMath.norm(new double[]{x, 0, z});
                 double toward = Math.max(0, SkyMath.dot(flat, sunFlat));
                 double warm = sunsetAmount * (0.3 + 0.7 * toward * toward) * (0.55 + 0.45 * (1 - el / 90));
@@ -420,7 +459,12 @@ public final class Effects {
                 double fs = Math.exp(-Math.pow(angle / spread, 2));
                 c = Colors.mix(c, shineColor, fs * shineK * 0.6);
                 double bright = light * (1 + fs * shineK * 0.25);
-                c = Colors.mix(c, 0x8C9AC0, s.darkness * 0.45);
+                c = Colors.mix(c, 0x8C9AC0, s.darkness * 0.45 * (1 - 0.75 * after));
+                if (after > 0.003) {
+                    int ag = Colors.mixOklab(afterBase, sunset, 0.25 + 0.55 * toward * toward);
+                    c = Colors.mixOklab(c, ag, after * 0.8);
+                    bright = Math.max(bright, after * (0.62 + 0.3 * toward));
+                }
                 c = Colors.mix(c, 0xA6ABB4, s.rain * 0.5);
                 if (flash.intensity() > 0) {
                     double fa = Math.acos(Math.max(-1, Math.min(1, SkyMath.dot(dir, flash.dir()))));
@@ -428,16 +472,20 @@ public final class Effects {
                     c = Colors.mix(c, 0xEEF2FF, Math.min(1, f));
                     bright = Math.max(bright, Math.min(1, bright + f * 1.2));
                 }
-                col[j] = Colors.argbf(fade * Math.min(1, 1 + 0.5 * s.rain), Colors.scale(c, Math.min(1, bright)));
-                glow[j] = Colors.argbf(fade * Math.min(1, fs * shineK * 1.1), shineColor);
+                c = Colors.scale(c, Math.min(1, bright));
+                // aerial perspective: distant clouds melt into the horizon haze
+                c = Colors.mixOklab(c, haze, distance * 0.55);
+                col[j] = Colors.argbf(fade * Math.min(1, 1 + 0.5 * s.rain), c);
+                glow[j] = Colors.argbf(fade * Math.min(1, fs * shineK * 1.1) * (1 - distance), shineColor);
             }
             if (ppos != null) {
+                Geometry target = pr < MID_CLOUDS ? near : pr < FAR_CLOUDS ? mid : far;
                 for (int j = 0; j < segs; j++) {
-                    base.quad(ppos[j], puv[j][0], puv[j][1], pcol[j],
+                    target.quad(ppos[j], puv[j][0], puv[j][1], pcol[j],
                             ppos[j + 1], puv[j + 1][0], puv[j + 1][1], pcol[j + 1],
                             pos[j + 1], uv[j + 1][0], uv[j + 1][1], col[j + 1],
                             pos[j], uv[j][0], uv[j][1], col[j]);
-                    if (shineK > 0.003 && ((pglow[j] | pglow[j + 1] | glow[j] | glow[j + 1]) >>> 24) > 1) {
+                    if (shineK > 0.003 && pr < FAR_CLOUDS && ((pglow[j] | pglow[j + 1] | glow[j] | glow[j + 1]) >>> 24) > 1) {
                         shine.quad(ppos[j], puv[j][0], puv[j][1], pglow[j],
                                 ppos[j + 1], puv[j + 1][0], puv[j + 1][1], pglow[j + 1],
                                 pos[j + 1], uv[j + 1][0], uv[j + 1][1], glow[j + 1],
@@ -449,6 +497,7 @@ public final class Effects {
             puv = uv.clone();
             pcol = col.clone();
             pglow = glow.clone();
+            pr = r;
         }
     }
 

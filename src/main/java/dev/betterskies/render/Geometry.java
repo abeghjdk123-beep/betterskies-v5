@@ -98,6 +98,41 @@ public final class Geometry {
         }
     }
 
+    /**
+     * Adds this geometry's quads to {@code dst} reflected in the horizon plane (y flipped),
+     * for a water mirror. {@code toWorld} is a row-major 3x3 rotation from this geometry's
+     * frame to the world (null = already in world space). Quads that are below the horizon
+     * in the world are left out, so only what's above the water gets reflected.
+     */
+    public void mirrorInto(Geometry dst, double[] toWorld) {
+        double[][] w = new double[4][];
+        for (int q = 0; q + 3 < verts; q += 4) {
+            double cy = 0;
+            for (int k = 0; k < 4; k++) {
+                int o = (q + k) * 5;
+                double x = pos[o], y = pos[o + 1], z = pos[o + 2];
+                if (toWorld != null) {
+                    double wx = toWorld[0] * x + toWorld[1] * y + toWorld[2] * z;
+                    double wy = toWorld[3] * x + toWorld[4] * y + toWorld[5] * z;
+                    double wz = toWorld[6] * x + toWorld[7] * y + toWorld[8] * z;
+                    x = wx;
+                    y = wy;
+                    z = wz;
+                }
+                w[k] = new double[]{x, -y, z};
+                cy += y;
+            }
+            if (cy <= 0) {
+                continue;
+            }
+            int o = q * 5;
+            dst.quad(w[0], pos[o + 3], pos[o + 4], col[q],
+                    w[1], pos[o + 8], pos[o + 9], col[q + 1],
+                    w[2], pos[o + 13], pos[o + 14], col[q + 2],
+                    w[3], pos[o + 18], pos[o + 19], col[q + 3]);
+        }
+    }
+
     // ================================================================== shapes
 
     /**

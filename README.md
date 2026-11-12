@@ -38,6 +38,10 @@ Press **F12** in game (rebindable under Controls → BetterSkies), or use Mod Me
 - **Northern lights** rebuilt as real 3D curtains hanging in the sky: bright green bases with a sharp lower edge, pink and red tops, fine vertical rays, folds that ripple, and a soft glow on the sky behind. They converge overhead when they reach high ("Reach overhead"), and a Storm style gives an intense pink-and-green outburst. **Natural colors** adapt the aurora to your night-sky colors, nebulae and moonlight, or pick your own colors.
 - **Star twinkle** you can actually see: stars scintillate in brightness, size and color, more strongly near the horizon where the air is thicker.
 - **Real atmosphere horizon** fades smoothly below the horizon into haze and ground color instead of stopping in a hard band.
+- **Mirror water**: the lower half of the sky becomes a calm sea reflecting everything above it (sky colors, real atmosphere, stars, aurora, sun, moon and clouds), with gentle ripples and real Fresnel falloff. You see it over the void, from high up and past your render distance.
+- **Clouds to the horizon**: the realistic cloud layer can stretch almost to the horizon, shrinking into rows of small distant clouds that melt into the haze, with soft far-away detail that doesn't shimmer.
+- **Twilight**: stars come out early in the deep blue after sunset, and clouds keep glowing soft pink and lavender in the last light.
+- **Clean Horizon** built-in sky: a real-atmosphere sky over a mirror sea with soft far clouds and early stars, and nothing extra.
 - **Reset the whole sky** (Studio page) and the **Blank sky** entry in the library give you a plain sky with every effect turned off, a clean canvas to build your own.
 - **Meteor showers**: some nights bring showers with meteors radiating from one point. **Comets** with tails that point away from the sun.
 - **Sunset glow** that wraps around the horizon toward the sun, replacing the vanilla fan (or keep vanilla's).

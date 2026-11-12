@@ -16,6 +16,8 @@ final class CloudLayer {
     private static final Async<CloudGen.Input, CloudGen.Result> job = new Async<>("Clouds");
     private static Gpu.Tex tex;
     private static Gpu.Tex edgeTex;
+    private static Gpu.Tex midTex;
+    private static Gpu.Tex farTex;
     private static CloudGen.Result shown;
     private static double wind;
     private static long lastNanos;
@@ -27,6 +29,9 @@ final class CloudLayer {
     private static double[] flashDir = {0, 1, 0};
 
     private static final Geometry base = new Geometry();
+    private static final Geometry mid = new Geometry();
+    private static final Geometry far = new Geometry();
+    private static final Geometry mirror = new Geometry();
     private static final Geometry shine = new Geometry();
     private static final Geometry rays = new Geometry();
 
@@ -39,17 +44,21 @@ final class CloudLayer {
         CloudGen.Result res = job.get(in, () -> CloudGen.generate(in));
         if (job.takeFresh() && res != null) {
             if (tex != null && tex.width != res.size()) {
-                tex.close();
-                edgeTex.close();
-                tex = null;
-                edgeTex = null;
+                closeTextures();
             }
+            int n = res.size();
+            int[] m = down(res.argb(), n, 4);
+            int[] f = down(m, n / 4, 4);
             if (tex == null) {
-                tex = Gpu.texture("clouds", res.argb(), res.size(), res.size());
-                edgeTex = Gpu.texture("cloud edges", res.edge(), res.size(), res.size());
+                tex = Gpu.texture("clouds", res.argb(), n, n);
+                edgeTex = Gpu.texture("cloud edges", res.edge(), n, n);
+                midTex = Gpu.texture("clouds (mid)", m, n / 4, n / 4);
+                farTex = Gpu.texture("clouds (far)", f, n / 16, n / 16);
             } else {
                 tex.update(res.argb());
                 edgeTex.update(res.edge());
+                midTex.update(m);
+                farTex.update(f);
             }
             shown = res;
         }
@@ -81,16 +90,73 @@ final class CloudLayer {
         tile = t;
         dirX = dx;
         dirZ = dz;
-        fadeDeg = 2 + Settings.SC_HORIZON_FADE.v(p) * 22;
-        minDeg = Math.toDegrees(Math.atan2(h, 110));
+        fadeDeg = Effects.cloudFadeWidth(p);
+        minDeg = Math.toDegrees(Math.atan2(h, Effects.cloudReach(p)));
 
         Effects.Flash flash = lightning(p, s, effects, time);
         base.clear();
+        mid.clear();
+        far.clear();
         shine.clear();
-        Effects.clouds(base, shine, p, s, grade, a0, b0, low, sunTint, flash);
+        Effects.clouds(base, mid, far, shine, p, s, grade, a0, b0, low, sunTint, flash, SkyRenderer.horizonColor());
+        drawAll(camera, false);
+    }
+
+    /** Draws this frame's clouds again, mirrored below the horizon (water reflection). */
+    static void drawMirrored(Matrix4f camera) {
+        if (tex != null && !base.isEmpty()) {
+            drawAll(camera, true);
+        }
+    }
+
+    private static void drawAll(Matrix4f camera, boolean mirrored) {
         Vector4f one = new Vector4f(1, 1, 1, 1);
-        Gpu.drawOnce(base, Gpu.alpha(), camera, one, tex.view(), Gpu.tiled(), "clouds");
-        Gpu.drawOnce(shine, Gpu.alpha(), camera, one, edgeTex.view(), Gpu.tiled(), "cloud shine");
+        Geometry[] parts = {far, mid, base, shine};
+        Gpu.Tex[] texes = {farTex, midTex, tex, edgeTex};
+        for (int i = 0; i < parts.length; i++) {
+            Geometry g = parts[i];
+            if (mirrored) {
+                mirror.clear();
+                parts[i].mirrorInto(mirror, null);
+                g = mirror;
+            }
+            Gpu.drawOnce(g, Gpu.alpha(), camera, one, texes[i].view(), Gpu.tiled(), "clouds");
+        }
+    }
+
+    /** Box-filters a square ARGB texture by {@code f} (color weighted by alpha): a soft copy for far clouds. */
+    static int[] down(int[] src, int n, int f) {
+        int m = Math.max(1, n / f);
+        int[] out = new int[m * m];
+        for (int y = 0; y < m; y++) {
+            for (int x = 0; x < m; x++) {
+                long a = 0, r = 0, g = 0, b = 0;
+                for (int j = 0; j < f; j++) {
+                    for (int i = 0; i < f; i++) {
+                        int c = src[(y * f + j) * n + x * f + i];
+                        int ca = c >>> 24;
+                        a += ca;
+                        r += (long) ((c >> 16) & 255) * ca;
+                        g += (long) ((c >> 8) & 255) * ca;
+                        b += (long) (c & 255) * ca;
+                    }
+                }
+                int k = f * f;
+                int aa = (int) (a / k);
+                out[y * m + x] = a == 0 ? 0x00FFFFFF
+                        : (aa << 24) | (int) (r / a) << 16 | (int) (g / a) << 8 | (int) (b / a);
+            }
+        }
+        return out;
+    }
+
+    private static void closeTextures() {
+        for (Gpu.Tex t : new Gpu.Tex[]{tex, edgeTex, midTex, farTex}) {
+            if (t != null) {
+                t.close();
+            }
+        }
+        tex = edgeTex = midTex = farTex = null;
     }
 
     /** Thunderstorms: occasional flickering flashes inside the clouds. */
@@ -145,12 +211,7 @@ final class CloudLayer {
     }
 
     static void release() {
-        if (tex != null) {
-            tex.close();
-            edgeTex.close();
-        }
-        tex = null;
-        edgeTex = null;
+        closeTextures();
         shown = null;
         job.clear();
     }

@@ -1,5 +1,6 @@
 package dev.betterskies.render;
 
+import com.mojang.blaze3d.pipeline.RenderPipeline;
 import dev.betterskies.BetterSkies;
 import dev.betterskies.config.Grade;
 import dev.betterskies.config.Profile;
@@ -162,27 +163,28 @@ public final class SkyRenderer {
         }
 
         // ---- 5. aurora
+        auroraG.clear();
+        twinkleG.clear();
         if (Settings.AURORA.on(p)) {
             double vis = (Settings.AURORA_NIGHT_ONLY.on(p) ? s.darkness : 1) * (Settings.HIDE_IN_RAIN.on(p) ? 1 - s.rain : 1);
             if (vis > 0.003) {
-                fx.clear();
-                Effects.aurora(fx, p, s, grade, time, vis, R * 0.93, low);
-                Gpu.drawOnce(fx, Gpu.alpha(), camera, new Vector4f(1, 1, 1, 1), white.view(), Gpu.sampler(false), "aurora");
+                auroraG.clear();
+                Effects.aurora(auroraG, p, s, grade, time, vis, R * 0.93, low);
+                Gpu.drawOnce(auroraG, Gpu.alpha(), camera, new Vector4f(1, 1, 1, 1), white.view(), Gpu.sampler(false), "aurora");
             }
         }
 
         // ---- 6. bright twinkling stars
         if (spaceShown != null && !spaceShown.bright().isEmpty() && spaceVis > 0.003) {
-            fx.clear();
-            Effects.twinkle(fx, p, spaceShown.bright(), effects ? time : 0, spaceVis, R * 0.95, angle + drift % SkyMath.TAU, tilt);
-            Gpu.drawOnce(fx, Gpu.alpha(), spaceM, new Vector4f(1, 1, 1, 1), dot.view(), Gpu.sampler(false), "stars");
+            Effects.twinkle(twinkleG, p, spaceShown.bright(), effects ? time : 0, spaceVis, R * 0.95, angle + drift % SkyMath.TAU, tilt);
+            Gpu.drawOnce(twinkleG, Gpu.alpha(), spaceM, new Vector4f(1, 1, 1, 1), dot.view(), Gpu.sampler(false), "stars");
         }
 
         // ---- 7. sun and moon
         double bodyVis = 1 - s.rain;
         if (bodyVis > 0.003) {
-            drawSun(p, grade, celestial, bodyVis);
-            drawMoon(p, s, grade, celestial, bodyVis);
+            drawSun(p, grade, celestial, bodyVis, null);
+            drawMoon(p, s, grade, celestial, bodyVis, null);
         }
 
         // ---- 8. meteors and comets
@@ -210,6 +212,11 @@ public final class SkyRenderer {
             CloudLayer.drawRays(p, s, camera, white, sunTint, time, R * 0.85);
         }
 
+        // ---- 10. mirror water below the horizon
+        if (Settings.REFLECT.on(p)) {
+            reflect(p, s, grade, camera, phys, spaceVis, angle + drift % SkyMath.TAU, angle, tilt, bodyVis, low, effects ? time : 0);
+        }
+
         status = AtmosphereLayer.busy() ? "Scattering sunlight…" : CloudLayer.busy() ? "Shaping clouds…"
                 : space.busy() ? "Generating stars…" : ImageLayer.busy() ? "Loading sky image…"
                 : ImageLayer.error() != null ? "Image problem: " + ImageLayer.error() : "";
@@ -231,6 +238,90 @@ public final class SkyRenderer {
     }
 
     // ================================================================== pieces
+
+    private static final Geometry auroraG = new Geometry();
+    private static final Geometry twinkleG = new Geometry();
+    private static final Geometry mirrorG = new Geometry();
+
+    /** Row-major world rotation of a frame turned by {@code tilt} about X, then {@code spin} about Z (like the celestial matrix). */
+    private static double[] rotation(double tilt, double spin) {
+        org.joml.Matrix3f m = new org.joml.Matrix3f().rotateX((float) tilt).rotateZ((float) spin);
+        double[] r = new double[9];
+        for (int row = 0; row < 3; row++) {
+            for (int col = 0; col < 3; col++) {
+                r[row * 3 + col] = m.get(col, row);
+            }
+        }
+        return r;
+    }
+
+    private static double[] apply(double[] m, double[] v) {
+        return new double[]{m[0] * v[0] + m[1] * v[1] + m[2] * v[2], m[3] * v[0] + m[4] * v[1] + m[5] * v[2],
+                m[6] * v[0] + m[7] * v[1] + m[8] * v[2]};
+    }
+
+    /** Transposed (inverse) rotation applied to v. */
+    private static double[] applyT(double[] m, double[] v) {
+        return new double[]{m[0] * v[0] + m[3] * v[1] + m[6] * v[2], m[1] * v[0] + m[4] * v[1] + m[7] * v[2],
+                m[2] * v[0] + m[5] * v[1] + m[8] * v[2]};
+    }
+
+    /** Draws the sky reflected in calm water over the whole lower half of the sky. */
+    private static void reflect(Profile p, SkyState s, Grade grade, Matrix4f camera, double phys, double spaceVis,
+                                double spaceSpin, double sunSpin, double tilt, double bodyVis, boolean low, double time) {
+        double ripple = Settings.REFLECT_RIPPLE.v(p);
+        Vector4f one = new Vector4f(1, 1, 1, 1);
+        // sky colors (opaque: covers whatever was below the horizon)
+        mirrorG.clear();
+        Reflection.sphere(mirrorG, R * 0.995, SkyMath::uvFromDir, ripple, time, low);
+        Gpu.drawOnce(mirrorG, Gpu.alpha(), camera, one, gradientTex.view(), Gpu.sampler(true), "reflection");
+        Gpu.Tex atmo = AtmosphereLayer.texture();
+        if (phys > 0 && atmo != null) {
+            Gpu.drawOnce(mirrorG, Gpu.alpha(), camera, new Vector4f(1, 1, 1, (float) phys), atmo.view(), Gpu.sampler(true), "reflection");
+        }
+        // stars and space
+        double[] spaceRot = rotation(tilt, spaceSpin);
+        if (spaceTex != null && spaceVis > 0.003) {
+            mirrorG.clear();
+            Reflection.sphere(mirrorG, R * 0.99, d -> SkyMath.uvFromDir(applyT(spaceRot, d)), ripple, time, low);
+            float v = (float) spaceVis;
+            Gpu.drawOnce(mirrorG, Gpu.additive(), camera, new Vector4f(v, v, v, 1), spaceTex.view(), Gpu.sampler(true), "reflection");
+        }
+        if (!twinkleG.isEmpty()) {
+            mirrorG.clear();
+            twinkleG.mirrorInto(mirrorG, spaceRot);
+            Gpu.drawOnce(mirrorG, Gpu.alpha(), camera, one, dot.view(), Gpu.sampler(false), "reflection");
+        }
+        if (!auroraG.isEmpty()) {
+            mirrorG.clear();
+            auroraG.mirrorInto(mirrorG, null);
+            Gpu.drawOnce(mirrorG, Gpu.alpha(), camera, one, white.view(), Gpu.sampler(false), "reflection");
+        }
+        // sun and moon
+        if (bodyVis > 0.003) {
+            double[] bodyRot = rotation(tilt, sunSpin);
+            drawSun(p, grade, camera, bodyVis, bodyRot);
+            drawMoon(p, s, grade, camera, bodyVis, bodyRot);
+        }
+        if (Settings.SKY_CLOUDS.on(p) && Settings.REFLECT_CLOUDS.on(p)) {
+            CloudLayer.drawMirrored(camera);
+        }
+        // the water itself, stronger looking down
+        mirrorG.clear();
+        Reflection.water(mirrorG, p, s, grade, horizonColor, R * 0.98);
+        Gpu.drawOnce(mirrorG, Gpu.alpha(), camera, one, white.view(), Gpu.sampler(false), "water");
+    }
+
+    /** Draws {@code g} with {@code matrix}, or (mirror != null) reflected into world space and drawn with the camera. */
+    private static void drawBody(Geometry g, RenderPipeline pipeline, Matrix4f matrix, Vector4f tint, Gpu.Tex tex, String label,
+                                 double[] mirror) {
+        if (mirror != null) {
+            mirrorG.clear();
+            g.mirrorInto(mirrorG, mirror);
+            g = mirrorG;
+        }
+        Gpu.drawOnce(g, pipeline, matrix, tint, tex.view(), Gpu.sampler(false), label);
+    }
 
     private static void ensureBasics() {
         if (sphereAlpha == null) {
@@ -266,7 +357,7 @@ public final class SkyRenderer {
         gradientTex.update(px);
     }
 
-    private static void drawSun(Profile p, Grade grade, Matrix4f celestial, double vis) {
+    private static void drawSun(Profile p, Grade grade, Matrix4f celestial, double vis, double[] mirror) {
         String style = Settings.SUN_STYLE.get(p);
         if ("VANILLA".equals(style) || "HIDDEN".equals(style)) {
             return;
@@ -290,10 +381,10 @@ public final class SkyRenderer {
         double half = 0.065 * Settings.SUN_SIZE.v(p) / Bodies.SUN_DISC;
         fx.billboard(new double[]{0, 1, 0}, R * 0.9, half, 0, -1);
         float f = (float) vis;
-        Gpu.drawOnce(fx, Gpu.additive(), celestial, new Vector4f(f, f, f, 1), sunTex.view(), Gpu.sampler(false), "sun");
+        drawBody(fx, Gpu.additive(), celestial, new Vector4f(f, f, f, 1), sunTex, "sun", mirror);
     }
 
-    private static void drawMoon(Profile p, SkyState s, Grade grade, Matrix4f celestial, double vis) {
+    private static void drawMoon(Profile p, SkyState s, Grade grade, Matrix4f celestial, double vis, double[] mirror) {
         String style = Settings.MOON_STYLE.get(p);
         if ("VANILLA".equals(style) || "HIDDEN".equals(style)) {
             return;
@@ -318,20 +409,20 @@ public final class SkyRenderer {
             fx.clear();
             fx.billboard(dir, R * 0.91, 0.05 * size * 5.5, 0, -1);
             float a = (float) (g * 0.55);
-            Gpu.drawOnce(fx, Gpu.additive(), celestial,
+            drawBody(fx, Gpu.additive(), celestial,
                     new Vector4f(Colors.r(color) / 255f * a, Colors.g(color) / 255f * a, Colors.b(color) / 255f * a, 1),
-                    glow.view(), Gpu.sampler(false), "moon glow");
+                    glow, "moon glow", mirror);
         }
         if (Settings.MOON_HALO.on(p)) {
             fx.clear();
             fx.billboard(dir, R * 0.91, 0.05 * size * 9, 0, -1);
             float a = (float) (0.35 * vis * (0.3 + 0.7 * lit));
-            Gpu.drawOnce(fx, Gpu.additive(), celestial, new Vector4f(a, a, a, 1), ring.view(), Gpu.sampler(false), "moon halo");
+            drawBody(fx, Gpu.additive(), celestial, new Vector4f(a, a, a, 1), ring, "moon halo", mirror);
         }
         if (moonTex != null) {
             fx.clear();
             fx.billboard(dir, R * 0.9, 0.05 * size / Bodies.MOON_DISC, 0, -1);
-            Gpu.drawOnce(fx, Gpu.alpha(), celestial, new Vector4f(1, 1, 1, (float) vis), moonTex.view(), Gpu.sampler(false), "moon");
+            drawBody(fx, Gpu.alpha(), celestial, new Vector4f(1, 1, 1, (float) vis), moonTex, "moon", mirror);
         }
     }
 

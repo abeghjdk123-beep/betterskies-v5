@@ -83,6 +83,11 @@ final class AtmosphereLayer {
         return w;
     }
 
+    /** The atmosphere texture drawn this frame (for the water reflection). */
+    static Gpu.Tex texture() {
+        return tex;
+    }
+
     /** Atmosphere color just above the horizon in a compass direction (degrees), or -1 if not ready. */
     static int horizonToward(double azimuthDeg) {
         Baked b = shown;

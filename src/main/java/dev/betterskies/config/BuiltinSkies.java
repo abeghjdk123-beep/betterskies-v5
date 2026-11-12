@@ -59,11 +59,48 @@ public final class BuiltinSkies {
         return p;
     }
 
+    /** Clean Horizon: a real-atmosphere sky with a calm mirror sea, soft far clouds and early stars. Nothing extra. */
+    public static Profile clean() {
+        Profile p = blank();
+        p.name = "Clean Horizon";
+        SKY_MODEL.set(p, "PHYSICAL");
+        PHYS_HAZE.set(p, 0.12);
+        PHYS_NIGHT.set(p, true);
+        GRAD_NIGHT.set(p, Gradient.of(0x203C6C, 0x172E58, 0x102244, 0x0A1832, 0x060F22));
+        SUN_STYLE.set(p, "SOFT");
+        SUN_GLOW.set(p, 0.3);
+        MOON_STYLE.set(p, "REALISTIC");
+        FOG_TINT.set(p, "HORIZON");
+        CLOUD_TINT.set(p, "SKY");
+        STARS.set(p, true);
+        STAR_DENSITY.set(p, 0.55);
+        STAR_BRIGHTNESS.set(p, 1.1);
+        TWINKLE.set(p, 0.35);
+        STAR_TWILIGHT.set(p, 0.65);
+        METEORS.set(p, true);
+        METEOR_RATE.set(p, 0.1);
+        SKY_CLOUDS.set(p, true);
+        SC_TYPE.set(p, "MIXED");
+        SC_COVERAGE.set(p, 0.4);
+        SC_SOFTNESS.set(p, 0.55);
+        SC_WIND.set(p, 0.12);
+        SC_DISTANCE.set(p, 0.85);
+        SC_HORIZON_FADE.set(p, 0.25);
+        SC_AFTERGLOW.set(p, 0.75);
+        SC_HIDE_VANILLA.set(p, true);
+        REFLECT.set(p, true);
+        REFLECT_CLARITY.set(p, 0.75);
+        REFLECT_RIPPLE.set(p, 0.2);
+        REFLECT_COLOR.set(p, 0x0A1628);
+        return p;
+    }
+
     private static List<Entry> build() {
         List<Entry> out = new ArrayList<>();
 
         Entry blankEntry = new Entry("Blank sky", "Everything off and a plain sky: a clean canvas to build your own.", blank());
         out.add(blankEntry);
+        out.add(new Entry("Clean Horizon", "Real sky over a calm mirror sea: soft clouds to the horizon, early stars, nothing extra.", clean()));
 
         sky(out, "BetterSkies", "The default: a soft day, a rosy sunset and a deep violet night.", p -> {
         });

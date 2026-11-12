@@ -129,6 +129,25 @@ public final class StudioGameTest implements FabricClientGameTest {
             look(ctx, 6f, 90f);
             ctx.waitTicks(80);
             shot(ctx, "6-phys-horizon-high");
+            // Clean Horizon (mirror water, far clouds, twilight stars) from high up
+            ctx.runOnClient(mc -> {
+                BetterSkies.profile().loadLook(dev.betterskies.config.BuiltinSkies.clean());
+                BetterSkies.changed();
+            });
+            Object[][] clean = {{13050, 4f, 90f, "bluehour-west"}, {13300, -5f, 270f, "twilight-east"}, {6000, 3f, 0f, "noon"},
+                    {12300, 2f, 90f, "sunset"}, {18000, 10f, 0f, "night"}};
+            for (Object[] c : clean) {
+                sp.getServer().runCommand("time set " + c[0]);
+                look(ctx, (Float) c[1], (Float) c[2]);
+                ctx.waitTicks(90);
+                shot(ctx, "65-clean-" + c[3]);
+            }
+            ctx.runOnClient(mc -> {
+                BetterSkies.profile().loadLook(new Profile());
+                Settings.SKY_MODEL.set(BetterSkies.profile(), "PHYSICAL");
+                Settings.SC_COVERAGE.set(BetterSkies.profile(), 0.35);
+                BetterSkies.changed();
+            });
             sp.getServer().runCommand("tp @p ~ 100 ~");
             // weather presets
             for (String preset : new String[]{"Partly cloudy", "Thunderstorm", "Foggy morning"}) {

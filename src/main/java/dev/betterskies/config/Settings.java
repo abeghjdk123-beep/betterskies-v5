@@ -118,9 +118,21 @@ public final class Settings {
             "What you see when you look below the horizon (e.g. from a high tower or over the void).",
             opt("FADE", "Fade to ground", "Blend from the horizon color into the ground color."),
             opt("EXTEND", "Extend horizon", "Keep the horizon color all the way down."),
-            opt("MIRROR", "Mirror", "Reflect the sky gradient, like a calm sea."));
+            opt("MIRROR", "Mirror", "Reflect the sky gradient. For a full reflection with stars and clouds, turn on Mirror water."));
     public static final Color GROUND = when(color("ground", "Ground color", 0x0F0B1C,
             "Color far below the horizon."), p -> BELOW.is(p, "FADE"));
+    public static final Toggle REFLECT = toggle("reflect", "Mirror water", false,
+            "Below the horizon, the whole sky is reflected like a calm sea: colors, stars, clouds, sun and moon. "
+                    + "You see it over the void, from high up and past your render distance.");
+    private static final Predicate<Profile> REF_ON = p -> REFLECT.on(p);
+    public static final Slider REFLECT_CLARITY = when(slider("reflect_clarity", "Mirror clarity", 0.7, 0, 1, 0.01, Unit.PERCENT,
+            "How clear the reflection is when you look down. Near the horizon water always reflects strongly."), REF_ON);
+    public static final Slider REFLECT_RIPPLE = when(slider("reflect_ripple", "Ripples", 0.25, 0, 1, 0.01, Unit.PERCENT,
+            "Gentle waves moving through the reflection (0 = a perfect mirror)."), REF_ON);
+    public static final Color REFLECT_COLOR = when(color("reflect_color", "Water color", 0x0B1A2E,
+            "Color of the water itself, showing through where the reflection is weaker."), REF_ON);
+    public static final Toggle REFLECT_CLOUDS = adv(when(toggle("reflect_clouds", "Reflect clouds", true,
+            "Show the realistic clouds in the water too."), REF_ON));
 
     // ================================================================== sun & moon
     static {
@@ -222,6 +234,8 @@ public final class Settings {
             "How fast stars shimmer."), STARS_ON));
     public static final Slider DAY_STARS = when(slider("day_stars", "Daytime stars", 0, 0, 1, 0.01, Unit.PERCENT,
             "Keep stars visible during the day (great for alien or fantasy skies)."), STARS_ON);
+    public static final Slider STAR_TWILIGHT = when(slider("star_twilight", "Stars at twilight", 0.25, 0, 1, 0.01, Unit.PERCENT,
+            "Let stars come out early, while the sky is still deep blue after sunset."), STARS_ON);
     public static final Slider STAR_SEED = adv(when(slider("star_seed", "Star pattern", 42, 1, 999, 1, Unit.INTEGER,
             "Pick a different arrangement of stars and space."), STARS_ON));
 
@@ -370,12 +384,17 @@ public final class Settings {
             "Compass direction the clouds drift toward (0° = north, 90° = east)."), SC_ON);
     public static final Slider SC_HEIGHT = when(slider("sc_height", "Altitude", 0.5, 0, 1, 0.01, Unit.PERCENT,
             "Low clouds stretch to the horizon; high clouds sit more overhead."), SC_ON);
+    public static final Slider SC_DISTANCE = when(slider("sc_distance", "Reach the horizon", 0.6, 0, 1, 0.01, Unit.PERCENT,
+            "How far the cloud layer stretches: 0 stops well above the horizon, 100% carries rows of small, distant "
+                    + "clouds all the way down to it."), SC_ON);
     public static final Slider SC_HORIZON_FADE = adv(when(slider("sc_horizon_fade", "Horizon fade", 0.5, 0, 1, 0.01, Unit.PERCENT,
             "How early clouds fade out toward the horizon."), SC_ON));
     public static final Color SC_LIT = when(color("sc_lit", "Sunlit color", 0xFFFFFF, "Color of the bright, sunlit parts."), SC_ON);
     public static final Color SC_SHADOW = when(color("sc_shadow", "Shadow color", 0x9AA5BE, "Color of the thick, shaded cores."), SC_ON);
     public static final Color SC_SUNSET = when(color("sc_sunset", "Sunset color", 0xFF9A6E,
             "Glow the clouds take on at sunrise and sunset (strongest toward the sun)."), SC_ON);
+    public static final Slider SC_AFTERGLOW = when(slider("sc_afterglow", "Twilight glow", 0.6, 0, 1, 0.01, Unit.PERCENT,
+            "After sunset, clouds keep catching the last light: soft pink and lavender, brighter than the darkening sky."), SC_ON);
     public static final Slider SC_NIGHT = adv(when(slider("sc_night", "Night brightness", 0.12, 0, 1, 0.01, Unit.PERCENT,
             "How visible clouds stay at night (moonlight)."), SC_ON));
     public static final Slider SC_SUN_SHINE = when(slider("sc_sun_shine", "Sunlight through clouds", 0.7, 0, 1, 0.01, Unit.PERCENT,
