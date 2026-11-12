@@ -124,7 +124,9 @@ public final class StudioGameTest implements FabricClientGameTest {
                 shot(ctx, "6-phys-" + ph[3]);
             }
             // horizon from high up, looking slightly down: the sky must fade smoothly below the horizon
-            sp.getServer().runCommand("tp @p ~ 220 ~");
+            sp.getServer().runCommand("gamemode creative @a");
+            sp.getServer().runCommand("fill -1 219 -1 1 219 1 minecraft:barrier");
+            sp.getServer().runCommand("tp @p 0 220 0");
             sp.getServer().runCommand("time set 12450");
             look(ctx, 6f, 90f);
             ctx.waitTicks(80);
@@ -148,7 +150,6 @@ public final class StudioGameTest implements FabricClientGameTest {
                 Settings.SC_COVERAGE.set(BetterSkies.profile(), 0.35);
                 BetterSkies.changed();
             });
-            sp.getServer().runCommand("tp @p ~ 100 ~");
             // weather presets
             for (String preset : new String[]{"Partly cloudy", "Thunderstorm", "Foggy morning"}) {
                 ctx.runOnClient(mc -> {
