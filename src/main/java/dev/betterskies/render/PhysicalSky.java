@@ -196,17 +196,45 @@ public final class PhysicalSky {
     }
 
     public static int color(double[] view, double[] sun, Params p) {
-        if (view[1] < 0.007) {
-            double el = Math.toDegrees(Math.asin(Math.max(-1, view[1])));
-            double[] flat = SkyMath.norm(new double[]{view[0], 0, view[2]});
-            return below(horizonColor(flat, sun, p), el, p);
+        double[] flat = SkyMath.norm(new double[]{view[0], 0, view[2]});
+        double el = Math.toDegrees(Math.asin(Math.max(-1, Math.min(1, view[1]))));
+        if (el < BAND) {
+            int up = colorAt(flat, BAND, sun, p);
+            int c = el < 0.4 ? horizonColor(flat, sun, p) : toRgb(radiance(view, sun, p), p, sun[1]);
+            c = soften(c, up, Math.max(el, 0.4), flat, sun);
+            return el < 0.4 ? below(c, el, p) : c;
         }
         return toRgb(radiance(view, sun, p), p, sun[1]);
     }
 
+    /** Height (degrees) of the thin, very saturated layer right at the horizon that gets softened. */
+    private static final double BAND = 12;
+
     private static int horizonColor(double[] flat, double[] sun, Params p) {
-        double c = Math.cos(Math.toRadians(0.4)), sn = Math.sin(Math.toRadians(0.4));
+        return colorAt(flat, 0.4, sun, p);
+    }
+
+    private static int colorAt(double[] flat, double elDeg, double[] sun, Params p) {
+        double c = Math.cos(Math.toRadians(elDeg)), sn = Math.sin(Math.toRadians(elDeg));
         return toRgb(radiance(new double[]{flat[0] * c, sn, flat[2] * c}, sun, p), p, sun[1]);
+    }
+
+    /**
+     * Single scattering makes a thin, intensely orange line at the very horizon in every
+     * direction at sunset. Real skies only glow like that toward the sun; elsewhere the
+     * low sky is a soft pink-grey haze. Blend the line into the sky just above it,
+     * keeping it where the sun is.
+     */
+    private static int soften(int c, int up, double el, double[] flat, double[] sun) {
+        double[] sf = SkyMath.norm(new double[]{sun[0], 0, sun[2]});
+        double facing = Math.max(0, flat[0] * sf[0] + flat[2] * sf[2]);
+        facing = Math.pow(facing, 3);
+        double low = Math.pow(1 - SkyMath.smooth(0.4, BAND, el), 0.6);
+        double w = low * (1 - 0.8 * facing);
+        int mixed = Colors.mixOklab(c, up, w);
+        // a touch of grey haze where the line was, so it reads as distance, not a stripe
+        double haze = low * (1 - facing) * 0.25;
+        return Colors.mixOklab(mixed, Colors.mix(mixed, 0x9AA0AC, 0.5), haze);
     }
 
     /**
@@ -229,9 +257,13 @@ public final class PhysicalSky {
     public static int[] texture(int w, int h, double[] sun, Params p) {
         int[] out = new int[w * h];
         int[] horizon = new int[w];
+        int[] up = new int[w];
+        double[][] flats = new double[w][];
         for (int x = 0; x < w; x++) {
             double[] d = SkyMath.dirFromUv((x + 0.5) / w, 0.5);
-            horizon[x] = horizonColor(SkyMath.norm(new double[]{d[0], 0, d[2]}), sun, p);
+            flats[x] = SkyMath.norm(new double[]{d[0], 0, d[2]});
+            up[x] = colorAt(flats[x], BAND, sun, p);
+            horizon[x] = soften(horizonColor(flats[x], sun, p), up[x], 0.4, flats[x], sun);
         }
         Parallel.rows(h, y -> {
             double v = (y + 0.5) / h;
@@ -242,6 +274,9 @@ public final class PhysicalSky {
                     c = below(horizon[x], el, p);
                 } else {
                     c = toRgb(radiance(SkyMath.dirFromUv((x + 0.5) / w, v), sun, p), p, sun[1]);
+                    if (el < BAND) {
+                        c = soften(c, up[x], el, flats[x], sun);
+                    }
                 }
                 out[y * w + x] = 0xFF000000 | c;
             }
