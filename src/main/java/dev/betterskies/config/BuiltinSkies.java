@@ -80,8 +80,8 @@ public final class BuiltinSkies {
         METEORS.set(p, true);
         METEOR_RATE.set(p, 0.1);
         SKY_CLOUDS.set(p, true);
-        SC_TYPE.set(p, "MIXED");
-        SC_COVERAGE.set(p, 0.36);
+        SC_TYPE.set(p, "CUMULUS");
+        SC_COVERAGE.set(p, 0.38);
         SC_SOFTNESS.set(p, 0.55);
         SC_DENSITY.set(p, 0.5);
         SC_SHADOW.set(p, 0xC6CEDF);

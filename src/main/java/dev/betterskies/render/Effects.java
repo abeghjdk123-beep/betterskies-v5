@@ -417,7 +417,8 @@ public final class Effects {
         // twilight: the sun is below the horizon but still lights the clouds from underneath
         double after = Settings.SC_AFTERGLOW.v(p) * SkyMath.smooth(0.07, -0.005, s.sunHeight)
                 * SkyMath.smooth(-0.22, -0.06, s.sunHeight) * (1 - 0.8 * s.rain);
-        int afterBase = grade.apply(0xE6DAF2);
+        int afterCool = grade.apply(0xBCC6E4);
+        int afterWarm = grade.apply(Colors.mixOklab(0xF4CBD6, sunset, 0.3));
         int haze = horizon;
         int nearRings = low ? 16 : 26, segs = low ? 40 : 72;
         int farRings = maxR > NEAR_CLOUDS * 1.05 ? (low ? 10 : 18) : 0;
@@ -452,7 +453,8 @@ public final class Effects {
                 pos[j] = len > 100 ? SkyMath.scale(dir, 100) : new double[]{x, h, z};
                 double[] flat = r < 1e-6 ? sunFlat : SkyMath.norm(new double[]{x, 0, z});
                 double toward = Math.max(0, SkyMath.dot(flat, sunFlat));
-                double warm = sunsetAmount * (0.3 + 0.7 * toward * toward) * (0.55 + 0.45 * (1 - el / 90));
+                double warm = sunsetAmount * (0.3 + 0.7 * toward * toward) * (0.55 + 0.45 * (1 - el / 90))
+                        * SkyMath.smooth(-0.07, 0.0, s.sunHeight);
                 int c = Colors.mixOklab(0xFFFFFF, sunset, Math.min(1, warm * (physical ? 0.85 : 1.15)));
                 // forward scattering: clouds near the sun get brighter and take on the sunlight's color
                 double angle = Math.acos(Math.max(-1, Math.min(1, SkyMath.dot(dir, s.sun))));
@@ -461,9 +463,10 @@ public final class Effects {
                 double bright = light * (1 + fs * shineK * 0.25);
                 c = Colors.mix(c, 0x8C9AC0, s.darkness * 0.45 * (1 - 0.75 * after));
                 if (after > 0.003) {
-                    int ag = Colors.mixOklab(afterBase, sunset, 0.25 + 0.55 * toward * toward);
-                    c = Colors.mixOklab(c, ag, after * 0.8);
-                    bright = Math.max(bright, after * (0.85 + 0.15 * toward));
+                    // cool lavender-blue away from the sun, soft pink toward where it set
+                    int ag = Colors.mixOklab(afterCool, afterWarm, toward * toward);
+                    c = Colors.mixOklab(c, ag, after * 0.85);
+                    bright = Math.max(bright, after * (0.72 + 0.25 * toward));
                 }
                 c = Colors.mix(c, 0xA6ABB4, s.rain * 0.5);
                 if (flash.intensity() > 0) {
