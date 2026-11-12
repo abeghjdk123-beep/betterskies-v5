@@ -132,6 +132,17 @@ public final class PhysicalSky {
         L[0] += ms * SUN * sR0 * BETA_R[0] * 0.08;
         L[1] += ms * SUN * sR1 * BETA_R[1] * 0.08;
         L[2] += ms * SUN * sR2 * BETA_R[2] * 0.08;
+        // blue hour: light scattered many times and filtered by ozone keeps the twilight
+        // sky deep blue long after single scattering has gone dim and brownish
+        double sy = sun[1];
+        double tw = 4.5e-2 * Math.exp(24.0 * Math.min(0, sy)) * (1 - SkyMath.smooth(0.0, 0.12, sy)) * (0.4 + 0.6 * p.ozone);
+        if (tw > 1e-9) {
+            double up = Math.max(0, dy);
+            double shape = 0.75 + 0.25 * up;
+            L[0] += tw * 0.16 * shape;
+            L[1] += tw * 0.34 * shape;
+            L[2] += tw * 1.0 * shape;
+        }
         if (tGround > 0) {
             // light bounced off the ground below the horizon
             double gx = ox + dx * tGround, gy = oy + dy * tGround, gz = oz + dz * tGround;

@@ -463,7 +463,7 @@ public final class Effects {
                 if (after > 0.003) {
                     int ag = Colors.mixOklab(afterBase, sunset, 0.25 + 0.55 * toward * toward);
                     c = Colors.mixOklab(c, ag, after * 0.8);
-                    bright = Math.max(bright, after * (0.62 + 0.3 * toward));
+                    bright = Math.max(bright, after * (0.85 + 0.15 * toward));
                 }
                 c = Colors.mix(c, 0xA6ABB4, s.rain * 0.5);
                 if (flash.intensity() > 0) {
