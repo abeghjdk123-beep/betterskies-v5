@@ -66,6 +66,7 @@ public final class BuiltinSkies {
         SKY_MODEL.set(p, "PHYSICAL");
         PHYS_HAZE.set(p, 0.12);
         PHYS_NIGHT.set(p, true);
+        GRAD_DUSK.set(p, Gradient.of(0xA9A3C4, 0x7C8CBD, 0x4D67A3, 0x2F4B86, 0x1D3462));
         GRAD_NIGHT.set(p, Gradient.of(0x203C6C, 0x172E58, 0x102244, 0x0A1832, 0x060F22));
         SUN_STYLE.set(p, "SOFT");
         SUN_GLOW.set(p, 0.3);
